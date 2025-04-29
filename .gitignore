@@ -15,9 +15,7 @@
 
 /ref/
 
-dataset*/
-analysis*/
-result*/
-performance*/
-backup/
-azure/
+dataset_raw/*
+analysis/*
+result/*
+performance/*
