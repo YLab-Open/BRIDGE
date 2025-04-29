@@ -11,11 +11,8 @@
 
 *.log
 
-/log/
-
-/ref/
-
-dataset_raw/*
-analysis/*
-result/*
-performance/*
+# dataset_raw/*
+# analysis/*
+# log/
+# result/*
+# performance/*
