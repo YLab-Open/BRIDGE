@@ -1,0 +1,84 @@
+#!/bin/bash
+export TOKENIZERS_PARALLELISM=False
+
+# -------- Path to YAML config --------
+CONFIG_FILE="BRIDGE.yaml"
+
+# -------- Model name --------
+models=(
+    # Open-source models
+    # "Baichuan-M1-14B-Instruct"
+    # "DeepSeek-R1"
+    # "DeepSeek-R1-Distill-Llama-8B"
+    # "DeepSeek-R1-Distill-Llama-70B"
+    # "DeepSeek-R1-Distill-Qwen-1.5B"
+    # "DeepSeek-R1-Distill-Qwen-7B"
+    # "DeepSeek-R1-Distill-Qwen-14B"
+    # "DeepSeek-R1-Distill-Qwen-32B"
+    # "gemma-2-9b-it"
+    # "gemma-2-27b-it"
+    # "gemma-3-1b-it"
+    # "gemma-3-4b-it"
+    # "gemma-3-12b-it"
+    # "gemma-3-27b-it"
+    "Llama-3.1-8B-Instruct"
+    # "Llama-3.1-70B-Instruct"
+    # "Llama-3.2-1B-Instruct"
+    # "Llama-3.2-3B-Instruct"
+    # "Llama-3.3-70B-Instruct" 
+    # "Llama-4-Scout-17B-16E-Instruct"
+    # "Llama-3.1-Nemotron-70B-Instruct-HF"
+    # "meditron-7b"
+    # "meditron-70b"
+    # "MeLLaMA-13B-chat"
+    # "MeLLaMA-70B-chat"
+    # "Llama3-OpenBioLLM-8B"
+    # "Llama3-OpenBioLLM-70B"
+    # "MMed-Llama-3-8B"
+    # "Llama-3.1-8B-UltraMedical"
+    # "Llama-3-70B-UltraMedical"
+    # "Ministral-8B-Instruct-2410"
+    # "Mistral-Small-Instruct-2409"
+    # "Mistral-Small-24B-Instruct-2501"
+    # "Mistral-Small-3.1-24B-Instruct-2503"
+    # "Mistral-Large-Instruct-2411"
+    # "BioMistral-7B"
+    # "Phi-3.5-mini-instruct"
+    # "Phi-3.5-MoE-instruct"
+    # "Phi-4"
+    # "Qwen2.5-1.5B-Instruct"
+    # "Qwen2.5-3B-Instruct"
+    "Qwen2.5-7B-Instruct"
+    # "Qwen2.5-72B-Instruct"
+    # "QwQ-32B-Preview"
+    # "QWQ-32B"
+    # "Athene-V2-Chat"
+    # "Yi-1.5-9B-Chat-16K"
+    # "Yi-1.5-34B-Chat-16K"
+
+    # Proprietary models
+    # "gpt-35-turbo"
+    # "gpt-4o"
+    # "gemini-2.0-flash"
+    # "gemini-1.5-pro"
+)
+
+# -------- GPU VISIBILITY --------
+gpus=0,1,2,3
+export CUDA_VISIBLE_DEVICES=$gpus
+# 0,1,2,3,4,5,6,7
+
+# nohup bash run_multiple_model.sh > log/run_multiple_model.log 2>&1 &
+
+# -------- Run --------
+for model_name in "${models[@]}"; do
+    # -------- Log output --------
+    echo "Job started, $model_name at $now ($((++i))/${#models[@]})"
+    # -------- Get time --------
+    now=$(date +"%m-%d_%H-%M")
+    nohup python main.py \
+    --model_name "$model_name" \
+    --gpus "$gpus" \
+    --config "$CONFIG_FILE" \
+    > log/${model_name}.${now}.log 2>&1
+done

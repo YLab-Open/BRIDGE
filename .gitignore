@@ -1,1 +1,23 @@
-.DS_Store\n__pycache__/\n*.ipynb_checkpoints/
+# ignore environment files
+/__pycache__/
+.ipynb_checkpoints/
+**/__pycache__/
+**/.ipynb_checkpoints/
+
+*.pyc
+*.pyo
+*.pyd
+.DS_Store
+
+*.log
+
+/log/
+
+/ref/
+
+dataset*/
+analysis*/
+result*/
+performance*/
+backup/
+azure/

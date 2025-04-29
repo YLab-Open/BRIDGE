@@ -1,0 +1,113 @@
+# --- Task list ---
+tasks:
+  - ADE-Drug dosage
+  # - ADE-Extraction
+  # - ADE-Identification
+  # - BARR2
+  # - BRONCO150-NER&Status
+  # - BrainMRI-AIS
+  # - Brateca-Hospitalization
+  # - Brateca-Mortality
+  # - C-EMRS
+  # - CARDIO-DE
+  # - CARES ICD10 Block
+  # - CARES-Area
+  # - CARES-ICD10 Chapter
+  # - CARES-ICD10 Subblock
+  # - CAS-evidence
+  # - CAS-label
+  # - CBLUE-CDN
+  # - CHIP-CDEE
+  # - CHIP-CTC
+  # - CHIP-MDCFNPC
+  # - CLINpt-NER
+  # - CLIP
+  # - CLISTER
+  # - Cantemis-NER
+  # - Cantemis-Norm
+  # - Cantemist-Coding
+  # - ClinicalNotes-UPMC
+  # - CodiEsp-ICD-10-CM
+  # - CodiEsp-ICD-10-PCS
+  # - DiSMed-NER
+  # - DialMed
+  # - EHRQA-Primary department
+  # - EHRQA-QA
+  # - EHRQA-Sub department
+  # - Ex4CDS
+  # - GOUT-CC-Consensus
+  # - GraSSCo PHI
+  # - HealthCareMagic-100k
+  # - IFMIR-Incident type
+  # - IFMIR-NER
+  # - IFMIR-NER&factuality
+  # - IMCS-V2-DAC
+  # - IMCS-V2-MRG
+  # - IMCS-V2-NER
+  # - IMCS-V2-SR
+  # - JP-STS
+  # - MEDIQA 2019-RQE
+  # - MEDIQA 2023-chat-A
+  # - MEDIQA 2023-sum-A
+  # - MEDIQA 2023-sum-B
+  # - MIE
+  # - MIMIC-III Outcome.LoS
+  # - MIMIC-III Outcome.Mortality
+  # - MIMIC-IV BHC
+  # - MIMIC-IV CDM
+  # - MIMIC-IV DiReCT.Dis
+  # - MIMIC-IV DiReCT.PDD
+  # - MTS
+  # - MTS-Temporal
+  # - MedDG
+  # - MedNLI
+  # - MedSTS
+  # - Medication extraction
+  # - NUBES
+  # - NorSynthClinical-NER
+  # - NorSynthClinical-PHI
+  # - NorSynthClinical-RE
+  # - PPTS
+  # - RuCCoN
+  # - RuDReC-NER
+  # - RuMedDaNet
+  # - RuMedNLI
+  # - cMedQA
+  # - iCorpus
+  # - icliniq-10k
+  # - meddocan
+  # - n2c2 2006-De-identification
+  # - n2c2 2010-Assertion
+  # - n2c2 2010-Concept
+  # - n2c2 2010-Relation
+  # - n2c2 2014-CAD
+  # - n2c2 2014-De-identification
+  # - n2c2 2014-Diabetes
+  # - n2c2 2014-Hyperlipidemia
+  # - n2c2 2014-Hypertension
+  # - n2c2 2014-Medication
+  # - n2c2 2018-ADE&medication
+
+# --- Experiment settings ---
+# --- Note: Each row: [prompt_mode, decoding_strategy, seed]
+# --- decoding_strategy: greedy, sampling
+experiments:            
+  - [direct, greedy, 42]
+  - [cot, greedy, 42]
+  - [direct-5-shot, greedy, 42]
+
+# --- Model & inference ---
+inference_mode: vllm # vllm or hf
+
+# --- Batch size ---
+# --- Note: actually only works for "hf" inference mode ---
+batch_size: 32
+
+# --- Generation hyper-parameters ---
+# --- Note: Only need to set once decoding_strategy contains sampling ---
+# temperature: 0.6
+# top_p: 0.9
+# top_k: 20
+
+# --- Length of the input and output:
+# --- As different models have significantly different token limitations, we set the input and output lengths in model.init.py
