@@ -1,4 +1,4 @@
-## BRIDGE (Benchmarking Large Language Models in Multilingual Real-world Clinical Text Understanding)
+## BRIDGE (Benchmarking Large Language Models for Understanding Real-world Clinical Practice Text)
 
 ## 📜 Background
 
@@ -9,7 +9,7 @@ More Details can be found in our [BRIDGE paper](https://arxiv.org/abs/2504.19467
 ## 🛠️ How to Use?
 
 #### 1. Download the BRIDGE Dataset
-All fully open-access datasets in BRIDGE are available in [BRIDGE-Open](https://huggingface.co/datasets/YLab-Open/BRIDGE-Open). To ensure the fairness of this leaderboard, we publicly release the following data for each task: Five completed samples serve as few-shot examples, and all testing samples with instruction and input information. Due to privacy and security considerations of clinical data, regulated-access datasets can not be directly published. However, all detailed task descriptions and their corresponding data sources are available in our [BRIDGE paper](https://arxiv.org/abs/2504.19467). Importantly, all 87 datasets have been verified to be either fully open-access or publicly accessible via reasonable request.
+All fully open-access datasets in BRIDGE are available in [BRIDGE-Open](https://huggingface.co/datasets/YLab-Open/BRIDGE-Open). To ensure the fairness of this leaderboard, we publicly release the following data for each task: Five completed samples serve as few-shot examples, and all testing samples with instructions and input information. Due to privacy and security considerations of clinical data, regulated-access datasets can not be directly published. However, all detailed task descriptions and their corresponding data sources are available in our [BRIDGE paper](https://arxiv.org/abs/2504.19467). Importantly, all 87 datasets have been verified to be either fully open-access or publicly accessible via reasonable request.
 
 #### 2. LLM Inference
 
@@ -21,8 +21,8 @@ All fully open-access datasets in BRIDGE are available in [BRIDGE-Open](https://
 #### 3. Evaluation
 
 - Result folder: All inference results will be saved in the `result` folder, which will be automatically created. The structure of the result folder is as follows: result -> task -> model -> experiment
-- Result extraction: We develop an automated script for each task separately to extract results from the standardized LLM outputs, details can be found in the `dataset` folder: `classification.py`, `extraction.py`, and `generation.py`.
-- Evaluation metrics: We provide evaluation function for different tasks, details can be found in the `metric` folder: `classification.py`, `extraction.py`, and `generation.py`.
+- Result extraction: We develop an automated script for each task separately to extract results from the standardized LLM outputs; details can be found in the `dataset` folder: `classification.py`, `extraction.py`, and `generation.py`.
+- Evaluation metrics: We provide an evaluation function for different tasks; details can be found in the `metric` folder: `classification.py`, `extraction.py`, and `generation.py`.
 - Evaluation script: run `evaluate_BRIDGE.py` to evaluate all tasks. The performance of each task will be saved in the `performance` folder. 
 
 #### 4. Update the Leaderboard
