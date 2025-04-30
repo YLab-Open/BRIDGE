@@ -38,6 +38,7 @@ class GeneralDataset(Dataset):
         self.tokenizer = tokenizer
         self.model_name = args.model_name
         self.examples = example
+        self.enable_thinking = args.enable_thinking
         self.max_token_input = args.max_token_input
         self.max_token_output = args.max_token_output
         self.dict_idx_cache = {}
@@ -54,6 +55,7 @@ class GeneralDataset(Dataset):
             data=self.data[idx],
             max_token_input=self.max_token_input,
             examples=self.examples,
+            enable_thinking=self.enable_thinking,
         )
         self.dict_idx_cache[idx] = input_text
         return input_text

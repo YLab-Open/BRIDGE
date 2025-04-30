@@ -1,3 +1,6 @@
+from functools import partial
+
+
 def process_punc_to_en(text):
     """
     Converts common punctuation into English version.
@@ -40,11 +43,20 @@ def get_truncate_text(text, tokenizer, max_tokens):
     return text
 
 
-def num_tokens_from_messages(messages, tokenizer):
+def num_tokens_from_messages(messages, tokenizer, enable_thinking=None):
     """Return the number of tokens used by a list of messages."""
-    token_template = tokenizer.apply_chat_template(
-        messages, tokenize=True, add_generation_prompt=True
-    )
+    if enable_thinking is not None:
+        # For Qwen3, switches between thinking and non-thinking modes. Default is True.
+        token_template = tokenizer.apply_chat_template(
+            messages,
+            tokenize=True,
+            add_generation_prompt=True,
+            enable_thinking=enable_thinking,
+        )
+    else:
+        token_template = tokenizer.apply_chat_template(
+            messages, tokenize=True, add_generation_prompt=True
+        )
     token_template_count = len(token_template)
     return token_template_count
 
@@ -81,7 +93,7 @@ def get_truncate_text_deepseek(text, tokenizer, max_tokens):
     return text
 
 
-def num_tokens_from_messages_openai(messages, tokenizer):
+def num_tokens_from_messages_openai(messages, tokenizer, **kwargs):
     """Return the number of tokens used by a list of messages."""
     tokens_per_message = 3
     tokens_per_name = 1
@@ -158,6 +170,7 @@ def format_chat(
     times_word_token=7,
     num_token_reserve=10,
     examples=[],
+    enable_thinking=None,
 ):
     """
     Format the input for different models based on the prompt mode.
@@ -203,6 +216,19 @@ def format_chat(
             num_token_reserve=num_token_reserve,
             examples=examples,
         )
+    elif "qwen3" in model_name.lower() and enable_thinking is not None:
+        example_ids, formatted_input = format_chat_general(
+            model_name=model_name,
+            tokenizer=tokenizer,
+            language=language,
+            input_system=input_system,
+            input_user=input_user,
+            max_token_input=max_token_input,
+            times_word_token=times_word_token,
+            num_token_reserve=num_token_reserve,
+            examples=examples,
+            enable_thinking=enable_thinking,
+        )
     else:
         example_ids, formatted_input = format_chat_general(
             model_name=model_name,
@@ -245,6 +271,7 @@ def get_formatted_chat(
     num_token_reserve=10,
     examples=[],
     flag_openai=False,
+    enable_thinking=None,
 ):
     # Step 1: Rough token estimation (not exact, but a starting point)
     initial_estimated_token_count = estimate_token_rough(
@@ -259,16 +286,20 @@ def get_formatted_chat(
     # Prepare the token counting functions based on the model type
     if flag_openai:
         # For OpenAI models, use a custom function to count tokens
-        get_token_func = num_tokens_from_messages_openai
-        truncate_text_func = get_truncate_text_openai
+        get_token_func = partial(num_tokens_from_messages_openai, tokenizer=tokenizer)
+        truncate_text_func = partial(get_truncate_text_openai, tokenizer=tokenizer)
     else:
         # For general models, use the tokenizer and apply_chat_template to count tokens
-        get_token_func = num_tokens_from_messages
-        truncate_text_func = get_truncate_text
+        get_token_func = partial(
+            num_tokens_from_messages,
+            tokenizer=tokenizer,
+            enable_thinking=enable_thinking,
+        )
+        truncate_text_func = partial(get_truncate_text, tokenizer=tokenizer)
 
     # Step 2: Handle truncation when exceeding token limit
     _, base_chat = format_message(input_system, input_user, [])
-    base_token_count = get_token_func(base_chat, tokenizer)
+    base_token_count = get_token_func(messages=base_chat)
 
     # Step 3: Truncate user input first to fit into remaining tokens
     if base_token_count > max_token_input:
@@ -295,7 +326,7 @@ def get_formatted_chat(
             {"role": "assistant", "content": ex["output"]},
         ]
         # Tokenize to check if we can fit this example within remaining tokens
-        ex_token_count = get_token_func(messages=chat_example, tokenizer=tokenizer)
+        ex_token_count = get_token_func(messages=chat_example)
 
         # If we have enough room for this example, add it to the list
         if ex_token_count < remaining_tokens:
@@ -322,6 +353,7 @@ def format_chat_general(
     times_word_token=7,
     num_token_reserve=10,
     examples=[],
+    enable_thinking=None,
 ):
     """
     Format the input for general models with optional examples and length truncation.
@@ -355,6 +387,18 @@ def format_chat_general(
             num_token_reserve=num_token_reserve,
             examples=examples,
         )
+    elif model_name.lower().startswith("qwen3") and enable_thinking is not None:
+        example_ids, formatted_chat = get_formatted_chat(
+            tokenizer=tokenizer,
+            language=language,
+            input_system=input_system,
+            input_user=input_user,
+            max_token_input=max_token_input,
+            times_word_token=times_word_token,
+            num_token_reserve=num_token_reserve,
+            examples=examples,
+            enable_thinking=enable_thinking,
+        )
     else:
         example_ids, formatted_chat = get_formatted_chat(
             tokenizer=tokenizer,
@@ -368,9 +412,17 @@ def format_chat_general(
         )
 
     # Apply the chat template for final formatting
-    formatted_input = tokenizer.apply_chat_template(
-        formatted_chat, tokenize=False, add_generation_prompt=True
-    )
+    if model_name.lower().startswith("qwen3") and enable_thinking is not None:
+        formatted_input = tokenizer.apply_chat_template(
+            formatted_chat,
+            tokenize=False,
+            add_generation_prompt=True,
+            enable_thinking=enable_thinking,
+        )
+    else:
+        formatted_input = tokenizer.apply_chat_template(
+            formatted_chat, tokenize=False, add_generation_prompt=True
+        )
 
     return example_ids, formatted_input
 

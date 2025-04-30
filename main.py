@@ -60,16 +60,16 @@ if __name__ == "__main__":
         help="The list of tasks to run.",
     )
     parser.add_argument(
-        "--inference_mode",
-        type=str,
-        default="vllm",
-        help="The inference mode for the model.",
-    )
-    parser.add_argument(
         "--model_name",
         type=str,
         default="Meta-Llama-3.1-70B-Instruct",
         help="The name of the LLM model, only one model.",
+    )
+    parser.add_argument(
+        "--inference_mode",
+        type=str,
+        default="vllm",
+        help="The inference mode for the model.",
     )
     parser.add_argument(
         "--gpus",
@@ -103,6 +103,14 @@ if __name__ == "__main__":
             if getattr(args, k, None) == parser.get_default(k):
                 # Only set if not already set by CLI
                 setattr(args, k, v)
+
+    # -------- Model setup ----------
+    # Note: Only Qwen3 models require the enable_thinking.
+    if hasattr(args, "enable_thinking") and args.model_name.startswith("qwen3"):
+        print("Enable thinking mode for Qwen3 models.")
+    else:
+        # Set enable_thinking to None for other models
+        args.enable_thinking = None
 
     # ---------- Experiment config ----------
     args.tasks.sort()
