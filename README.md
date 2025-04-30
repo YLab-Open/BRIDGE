@@ -2,13 +2,18 @@
 
 ## 📜 Background
 
-Recent advances in **Large Language Models (LLMs)** have demonstrated transformative potential in **healthcare**,  yet concerns remain around their reliability and clinical validity across diverse clinical tasks, specialties, and languages. To support timely and trustworthy evaluation, building upon our [systematic review](https://ai.nejm.org/doi/full/10.1056/AIra2400012) of global clinical text resources, we introduce **[BRIDGE](https://arxiv.org/abs/2504.19467)**, **a multilingual benchmark that comprises 87 real-world clinical text tasks spanning nine languages and more than one million samples**. Furthermore, we construct this leaderboard of LLM in clinical text understanding by systematically evaluating **52 state-of-the-art LLMs** (by 2025/04/29).
+**Large Language Models (LLMs)** have demonstrated transformative potential in **healthcare**,  yet concerns remain around their reliability and clinical validity across diverse clinical tasks, specialties, and languages. To support timely and trustworthy evaluation, building upon our [systematic review](https://ai.nejm.org/doi/full/10.1056/AIra2400012) of global clinical text resources, we introduce **[BRIDGE](https://arxiv.org/abs/2504.19467)**, **a multilingual benchmark that comprises 87 real-world clinical text tasks spanning nine languages and more than one million samples**. Furthermore, we construct this leaderboard of LLM in clinical text understanding by systematically evaluating **52 state-of-the-art LLMs** (by 2025/04/29). 
 
-More Details can be found in our [BRIDGE paper](https://arxiv.org/abs/2504.19467) and [systematic review](https://ai.nejm.org/doi/full/10.1056/AIra2400012).
+**Key Features**: Real-world Clinical Text, 9 Languages, 9 Task types, 14 Clinical specialties, 7 Clinical document types, 20 Clinical applications covering 6 clinical stages of patient care. 
+
+**More Details** can be found in our [BRIDGE paper](https://arxiv.org/abs/2504.19467) and [systematic review](https://ai.nejm.org/doi/full/10.1056/AIra2400012), and the comprehensive leaderboard is available at [BRIDGE Leaderboard](https://huggingface.co/spaces/YLab-Open/BRIDGE-Medical-Leaderboard).
+
+**This project** is led and maintained by the team of <a href="https://ylab.top/">Prof. Jie Yang</a> and <a href="https://www.drugepi.org/team/joshua-kueiyu-lin">Prof. Kueiyu Joshua Lin</a> at Harvard Medical School and Brigham and Women's Hospital. 
 
 ## 🛠️ How to Use?
 
 #### 1. Download the BRIDGE Dataset
+
 All fully open-access datasets in BRIDGE are available in [BRIDGE-Open](https://huggingface.co/datasets/YLab-Open/BRIDGE-Open). To ensure the fairness of this leaderboard, we publicly release the following data for each task: Five completed samples serve as few-shot examples, and all testing samples with instructions and input information. Due to privacy and security considerations of clinical data, regulated-access datasets can not be directly published. However, all detailed task descriptions and their corresponding data sources are available in our [BRIDGE paper](https://arxiv.org/abs/2504.19467). Importantly, all 87 datasets have been verified to be either fully open-access or publicly accessible via reasonable request.
 
 #### 2. LLM Inference
@@ -27,29 +32,30 @@ All fully open-access datasets in BRIDGE are available in [BRIDGE-Open](https://
 
 #### 4. Update the Leaderboard
 
-If you would like to submit your model results to BRIDGE and demonstrate its performance, please send the genereated `result` folder to us, and we will update the leaderboard accordingly. The leaderboard will be updated regularly, and we will notify you via email once your results are added.
-
-
-
-## 🤝 Contributing
-We welcome and greatly value contributions and collaborations from the community!
-If you have clinical text datasets that you would like to share for broader exploration, please contact us!
-We are committed to expanding BRIDGE while strictly adhering to appropriate data use agreements and ethical guidelines. Let's work together to advance the responsible application of LLMs in medicine!
-
+If you would like to submit your model results to [BRIDGE Leaderboard](https://huggingface.co/spaces/YLab-Open/BRIDGE-Medical-Leaderboard) and demonstrate its performance, please send the generated `result` folder to us, and we will update the leaderboard accordingly. The leaderboard will be updated regularly, and we will notify you via email once your results are added.
 
 ## 📢 Updates
 
 - 🗓️ **2025/04/28**: BRIDGE Leaderboard V1.0.0 is now live!
 - 🗓️ **2025/04/28**: Our paper [BRIDGE](https://arxiv.org/abs/2504.19467) is now available on arXiv!
 
+## 🤝 Contributing
+We welcome and greatly value contributions and collaborations from the community!
+If you have clinical text datasets that you would like to share for broader exploration, please contact us!
+We are committed to expanding BRIDGE while strictly adhering to appropriate data use agreements and ethical guidelines. Let's work together to advance the responsible application of LLMs in medicine!
+
+## 🚀 Donation
+
+BRIDGE is a non-profit, researcher-led benchmark that requires substantial resources (e.g., high-performance GPUs, a dedicated team) to sustain. To support open and impactful academic research that advances clinical care, we welcome your contributions. Please contact Prof. Jie Yang at <jyang66@bwh.harvard.edu> to discuss donation opportunities.
+
 
 ## 📬 Contact Information
 
 If you have any questions about BRIDGE or the leaderboard, feel free to reach out!
 
-- **Leaderboard Managers**: Jiageng Wu (jiwu7@bwh.harvard.edu), Kevin Xie (kevinxie@mit.edu)
-- **Benchmark Managers**: Jiageng Wu (jiwu7@bwh.harvard.edu), Bowen Gu (bogu@bwh.harvard.edu)
-- **Program Lead**: Jie Yang (jyang66@bwh.harvard.edu)
+- **Leaderboard Managers**: Jiageng Wu (<jiwu7@bwh.harvard.edu>), Kevin Xie (<kevinxie@mit.edu>), Bowen Gu (<bogu@bwh.harvard.edu>)
+- **Benchmark Managers**: Jiageng Wu, Bowen Gu
+- **Project Lead**: Jie Yang (<jyang66@bwh.harvard.edu>)
 
 
 
@@ -77,6 +83,7 @@ If you find this leaderboard useful for your research and applications, please c
     publisher={Massachusetts Medical Society}
 }
 ```
+If you use the datasets in BRIDGE, please also cite the original paper of datasets, which can be found in our BRIDGE paper.
 
 <div style="display: flex; align-items: center; justify-content: space-between; width: 100%; height: 150px;">
   <img
