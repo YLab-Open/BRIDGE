@@ -271,14 +271,20 @@ class GeneralEvaluation(GeneralTask):
             for file_name in os.listdir(model_path):
                 # Check if the file is a result file for the current prompt mode
                 # Example:
-                # task: 1-1.ADE-ADE identification
+                # task: ADE identification
                 # prompt mode: direct-5-shot
                 # decoding strategy: greedy
                 # seed: 42
-                # file: 1-1.ADE-ADE identification-direct-5-shot-greedy-42.result.json
-                file_prompt_mode = file_name.replace(f"{self.name}-", "").split(
-                    "-greedy"
-                )[0]
+                # file: ADE identification-direct-5-shot-greedy-42.result.json
+                file_prompt_mode = file_name.replace(f"{self.name}-", "")
+                if "greedy" in file_prompt_mode:
+                    file_prompt_mode = file_prompt_mode.split("-greedy")[0]
+                elif "sampling" in file_prompt_mode:
+                    file_prompt_mode = file_prompt_mode.split("-sampling")[0]
+                else:
+                    raise ValueError(
+                        f"Invalid file name: {file_name}. Expected 'greedy' or 'sampling'."
+                    )
                 if file_name.endswith(".json") and prompt_mode == file_prompt_mode:
                     list_file_result.append(os.path.join(model_path, file_name))
             list_file_result.sort()
@@ -286,7 +292,7 @@ class GeneralEvaluation(GeneralTask):
             return list_file_result
 
         path_dir_result = os.path.join("result", self.name)
-        # seach the result file for each model
+        # search the result file for each model
         dict_model_result = {}
         if model_name:
             if not isinstance(model_name, list):

@@ -1,6 +1,109 @@
+# --- Model & inference ---
+inference_mode: vllm # vllm or hf
+
+# --- Experiment settings ---
+# --- Note: Each row: [prompt_mode, decoding_strategy, seed]
+# --- decoding_strategy: greedy, sampling
+experiments:            
+  - [direct, greedy, 42]
+  - [cot, greedy, 42]
+  - [direct-5-shot, greedy, 42]
+
+# --- Model settings ---
+# --- Note: For Qwen3, switches between thinking and non-thinking modes. 
+# --- Default is True. Not impacting the inferences of other models.
+enable_thinking: true
+
+# --- Batch size ---
+# --- Note: actually only works for "hf" inference mode
+batch_size: 32
+
+# --- Generation hyper-parameters ---
+# --- Note: Only need to set once decoding_strategy contains sampling
+temperature: 0.6
+top_p: 0.95
+top_k: 20
+
+# --- Length of the input and output:
+max_token_all: 102400
+max_token_output: 3072
+max_token_input: 99328
+# Note: If not set max_token_all, it will be automatically set to the maximum length of the model according to the model config file.
+# Note: If not set max_token_output, it will be automatically set to 1/8 of max_token_all. (except for several models with shorter max_token_output)
+# Note: If not set max_token_input, it will be automatically set to max_token_all - max_token_output.
+# More details in model/config.py
+
+
+# -------- Model name --------
+model_name: Llama-3.1-8B-Instruct
+# Supported models:
+    # Baichuan-M1-14B-Instruct
+    # DeepSeek-R1
+    # DeepSeek-R1-Distill-Llama-8B
+    # DeepSeek-R1-Distill-Llama-70B
+    # DeepSeek-R1-Distill-Qwen-1.5B
+    # DeepSeek-R1-Distill-Qwen-7B
+    # DeepSeek-R1-Distill-Qwen-14B
+    # DeepSeek-R1-Distill-Qwen-32B
+    # gemma-2-9b-it
+    # gemma-2-27b-it
+    # gemma-3-1b-it
+    # gemma-3-4b-it
+    # gemma-3-12b-it
+    # gemma-3-27b-it
+    # Llama-3.1-8B-Instruct
+    # Llama-3.1-70B-Instruct
+    # Llama-3.2-1B-Instruct
+    # Llama-3.2-3B-Instruct
+    # Llama-3.3-70B-Instruct
+    # Llama-4-Scout-17B-16E-Instruct
+    # Llama-3.1-Nemotron-70B-Instruct-HF
+    # meditron-7b
+    # meditron-70b
+    # MeLLaMA-13B-chat
+    # MeLLaMA-70B-chat
+    # Llama3-OpenBioLLM-8B
+    # Llama3-OpenBioLLM-70B
+    # MMed-Llama-3-8B
+    # Llama-3.1-8B-UltraMedical
+    # Llama-3-70B-UltraMedical
+    # Ministral-8B-Instruct-2410
+    # Mistral-Small-Instruct-2409
+    # Mistral-Small-24B-Instruct-2501
+    # Mistral-Small-3.1-24B-Instruct-2503
+    # Mistral-Large-Instruct-2411
+    # BioMistral-7B
+    # Phi-3.5-mini-instruct
+    # Phi-3.5-MoE-instruct
+    # Phi-4
+    # Qwen2.5-1.5B-Instruct
+    # Qwen2.5-3B-Instruct
+    # Qwen2.5-7B-Instruct
+    # Qwen2.5-72B-Instruct
+    # Qwen2.5-14B-Instruct
+    # Qwen3-0.6B
+    # Qwen3-1.7B
+    # Qwen3-4B
+    # Qwen3-8B
+    # Qwen3-14B
+    # Qwen3-32B
+    # Qwen3-30B-A3B
+    # Qwen3-235B-A22B
+    # QwQ-32B-Preview
+    # QWQ-32B
+    # Athene-V2-Chat
+    # Yi-1.5-9B-Chat-16K
+    # Yi-1.5-34B-Chat-16K
+    # gpt-35-turbo
+    # gpt-4o
+    # gemini-2.0-flash
+    # gemini-1.5-pro
+
 # --- Task list ---
+# --- Note: The task file should be in the folder of "dataset_raw" and end with "SFT.json".
+# --- Note: The result will be saved in the folder of result/task_name/model_name/{task_name}_{inference_mode}_{prompt_mode}_{decoding_strategy}_{seed}}.json
 tasks:
-  # - ADE-Drug dosage
+  - ADE-Drug dosage
   # - ADE-Extraction
   # - ADE-Identification
   # - BARR2
@@ -87,32 +190,3 @@ tasks:
   # - n2c2 2014-Hypertension
   # - n2c2 2014-Medication
   # - n2c2 2018-ADE&medication
-
-# --- Experiment settings ---
-# --- Note: Each row: [prompt_mode, decoding_strategy, seed]
-# --- decoding_strategy: greedy, sampling
-experiments:            
-  - [direct, greedy, 42]
-  - [cot, greedy, 42]
-  - [direct-5-shot, greedy, 42]
-
-# --- Model settings ---
-# --- Note: For Qwen3, switches between thinking and non-thinking modes. 
-# --- Default is True. Not impacting the inferences of other models.
-enable_thinking: true
-
-# --- Model & inference ---
-inference_mode: vllm # vllm or hf
-
-# --- Batch size ---
-# --- Note: actually only works for "hf" inference mode ---
-batch_size: 32
-
-# --- Generation hyper-parameters ---
-# --- Note: Only need to set once decoding_strategy contains sampling ---
-temperature: 0.6
-top_p: 0.95
-top_k: 20
-
-# --- Length of the input and output:
-# --- As different models have significantly different token limitations, we set the input and output lengths in model.init.py

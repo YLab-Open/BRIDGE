@@ -1,11 +1,8 @@
 #!/usr/bin/env bash
-export TOKENIZERS_PARALLELISM=False
+# export TOKENIZERS_PARALLELISM=False
 
 # -------- Path to YAML config --------
 CONFIG_FILE="BRIDGE.yaml"
-
-# -------- Model name --------
-model_name=Llama-3.1-8B-Instruct
 
 # -------- GPU VISIBILITY --------
 gpus=0,1,2,3

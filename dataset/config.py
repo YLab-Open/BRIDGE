@@ -2,18 +2,10 @@ import numpy as np
 
 list_str_templates_direct = [
     "Return your answer in the following format. DO NOT GIVE ANY EXPLANATION:",
-    "Provide only the final answer in the format below. Do not include any reasoning or explanation.",
-    "Output your answer strictly using the following format. Explanations are not allowed.",
-    "Respond using the exact format specified. Do not add any additional commentary.",
-    "Return the final answer exactly as outlined below without providing any justification or reasoning.",
 ]
 
 list_str_templates_cot = [
     "Solve it in a step-by-step fashion, return your answer in the following format, PROVIDE DETAILED ANALYSIS BEFORE THE RESULT:",
-    "Let's use step by step inductive reasoning, given the clinical nature of the task. Return your analysis and result in the following format:",
-    "Determine the answer to the task given the clinical context in a step by step fashion. Give your analysis and final result in the format below:",
-    "Let's break the task into multiple steps and reason step by step as a clinician would. Then, provide your analysis and result in the specified format:",
-    "Reason through this task step by step like a clinical expert, then return your analysis and final result in the given format:",
 ]
 str_format_cot = """\nAnalysis:
 ...
@@ -189,6 +181,15 @@ def get_models_evaluate():
         "Qwen2.5-3B-Instruct",
         "Qwen2.5-7B-Instruct",
         "Qwen2.5-72B-Instruct",
+        "Qwen2.5-14B-Instruct",
+        "Qwen3-0.6B",
+        "Qwen3-1.7B",
+        "Qwen3-4B",
+        "Qwen3-8B",
+        "Qwen3-14B",
+        "Qwen3-32B",
+        "Qwen3-30B-A3B",
+        "Qwen3-235B-A22B",
         "QwQ-32B-Preview",
         "QWQ-32B",
         "Athene-V2-Chat",

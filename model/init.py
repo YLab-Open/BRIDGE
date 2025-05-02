@@ -25,57 +25,65 @@ def load_config(args):
     args.num_workers = len(args.gpus) * 2
 
     # load the config for context window
-    if "Qwen" in args.model_name or "Athene" in args.model_name.lower():
-        path_file_config = os.path.join(args.model_path, "tokenizer_config.json")
-        with open(path_file_config, "r", encoding="utf-8") as f:
-            dict_config = json.load(f)
-        args.max_token_all = dict_config["model_max_length"]
-    elif "BioMistral-7B" == args.model_name:
-        args.max_token_all = 2048
-    else:
-        path_file_config = os.path.join(args.model_path, "config.json")
-        with open(path_file_config, "r", encoding="utf-8") as f:
-            dict_config = json.load(f)
-        if "max_position_embeddings" in dict_config:
-            args.max_token_all = dict_config["max_position_embeddings"]
-        elif "text_config" in dict_config:
-            args.max_token_all = dict_config["text_config"]["max_position_embeddings"]
+    if not hasattr(args, "max_token_all"):
+        if "Qwen" in args.model_name or "Athene" in args.model_name.lower():
+            path_file_config = os.path.join(args.model_path, "tokenizer_config.json")
+            with open(path_file_config, "r", encoding="utf-8") as f:
+                dict_config = json.load(f)
+            args.max_token_all = dict_config["model_max_length"]
+        elif "BioMistral-7B" == args.model_name:
+            args.max_token_all = 2048
         else:
-            args.max_token_all = 128 * 1000
-
-    # Set the max token all
-    args.max_token_all = (
-        128 * 1000 if args.max_token_all > 128 * 1000 else args.max_token_all
-    )
+            path_file_config = os.path.join(args.model_path, "config.json")
+            with open(path_file_config, "r", encoding="utf-8") as f:
+                dict_config = json.load(f)
+            if "max_position_embeddings" in dict_config:
+                args.max_token_all = dict_config["max_position_embeddings"]
+            elif "text_config" in dict_config:
+                args.max_token_all = dict_config["text_config"][
+                    "max_position_embeddings"
+                ]
+            else:
+                print(
+                    f"Not assign max_token_all and can not find information in {path_file_config}"
+                )
+                return None
+        print(
+            f"Not assign max_token_all, but found the information in model config: {args.max_token_all}"
+        )
 
     # Several model only support the short context window
-    if args.model_name in [
-        # Only 2048 tokens
-        "meditron-7b",
-        "BioMistral-7B",
-        # Only 4096 tokens
-        "meditron-70b",
-        "MeLLaMA-13B-chat",
-        "MeLLaMA-70B-chat",
-        # Only 8192 tokens
-        # "MMed-Llama-3-8B",
-        # "gemma-2-9b-it",
-        # "gemma-2-27b-it",
-        # "Llama3-OpenBioLLM-8B",
-        # "Llama3-OpenBioLLM-70B",
-        # "MMed-Llama-3-8B",
-    ]:
-        args.max_token_output = 512
-    else:
-        args.max_token_output = int(args.max_token_all * 0.125)
-
-    # Set the max token output
-    args.max_token_output = (
-        3 * 1024 if args.max_token_output > 3 * 1024 else args.max_token_output
-    )
+    if not hasattr(args, "max_token_output"):
+        if args.model_name in [
+            # Only 2048 tokens
+            "meditron-7b",
+            "BioMistral-7B",
+            # Only 4096 tokens
+            "meditron-70b",
+            "MeLLaMA-13B-chat",
+            "MeLLaMA-70B-chat",
+            # Only 8192 tokens
+            # "MMed-Llama-3-8B",
+            # "gemma-2-9b-it",
+            # "gemma-2-27b-it",
+            # "Llama3-OpenBioLLM-8B",
+            # "Llama3-OpenBioLLM-70B",
+            # "MMed-Llama-3-8B",
+        ]:
+            args.max_token_output = 512
+            print(f"Not assign max_token_output, set: {args.max_token_output}")
+        else:
+            args.max_token_output = int(args.max_token_all * 0.125)
+            print(
+                f"Not assign max_token_output, set: {args.max_token_output} for 1/8 of max_token_all"
+            )
 
     # Set the max token input
-    args.max_token_input = int(args.max_token_all - args.max_token_output)
+    if not hasattr(args, "max_token_input"):
+        args.max_token_input = int(args.max_token_all - args.max_token_output)
+        print(
+            f"Not assign max_token_input, set: {args.max_token_input} for max_token_all - max_token_output"
+        )
 
 
 def load_model(args):
@@ -97,7 +105,7 @@ def load_model(args):
                 dtype="bfloat16",
                 trust_remote_code=True,
                 max_model_len=args.max_token_all,
-                gpu_memory_utilization=0.93,
+                gpu_memory_utilization=0.95,
                 tokenizer_mode="mistral",
                 load_format="mistral",
                 config_format="mistral",
@@ -108,7 +116,7 @@ def load_model(args):
                 tensor_parallel_size=len(args.gpus),
                 dtype="bfloat16",
                 max_model_len=args.max_token_all,
-                gpu_memory_utilization=0.93,
+                gpu_memory_utilization=0.95,
                 trust_remote_code=True,
             )
     else:
@@ -141,6 +149,7 @@ def model_config_hf(args, logger, model, tokenizer):
     logger.info(f"Temperature: {model.generation_config.temperature}")
     logger.info(f"Top_p: {model.generation_config.top_p}")
     logger.info(f"Top_k: {model.generation_config.top_k}")
+    # Print the token limit
     logger.info(f"Max tokens all: {args.max_token_all}")
     logger.info(f"Max tokens input: {args.max_token_input}")
     logger.info(f"Max tokens output: {args.max_token_output}")
@@ -173,10 +182,6 @@ def model_config_vllm(args, logger):
         logger.info(f"Temperature: 0")
         logger.info(f"Top_p: None")
         logger.info(f"Top_k: None")
-        logger.info(f"Max tokens all: {args.max_token_all}")
-        logger.info(f"Max tokens input: {args.max_token_input}")
-        logger.info(f"Max tokens output: {args.max_token_output}")
-
     else:
         sampling_params = SamplingParams(
             seed=args.seed,
@@ -190,8 +195,10 @@ def model_config_vllm(args, logger):
         logger.info(f"Temperature: {args.temperature}")
         logger.info(f"Top_p: {args.top_p}")
         logger.info(f"Top_k: {args.top_k}")
-        logger.info(f"Max tokens all: {args.max_token_all}")
-        logger.info(f"Max tokens input: {args.max_token_input}")
-        logger.info(f"Max tokens output: {args.max_token_output}")
+
+    # Print the token limit
+    logger.info(f"Max tokens all: {args.max_token_all}")
+    logger.info(f"Max tokens input: {args.max_token_input}")
+    logger.info(f"Max tokens output: {args.max_token_output}")
 
     return sampling_params
