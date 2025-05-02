@@ -1,12 +1,11 @@
 #!/bin/bash
 export TOKENIZERS_PARALLELISM=False
 
-# -------- Path to YAML config --------
+# --- Path to YAML config ---
 CONFIG_FILE="BRIDGE.yaml"
 
-# -------- Model name --------
+# --- Model name ---
 models=(
-    # Open-source models
     # "Baichuan-M1-14B-Instruct"
     # "DeepSeek-R1"
     # "DeepSeek-R1-Distill-Llama-8B"
@@ -55,26 +54,20 @@ models=(
     # "Athene-V2-Chat"
     # "Yi-1.5-9B-Chat-16K"
     # "Yi-1.5-34B-Chat-16K"
-
-    # Proprietary models
-    # "gpt-35-turbo"
-    # "gpt-4o"
-    # "gemini-2.0-flash"
-    # "gemini-1.5-pro"
 )
 
-# -------- GPU VISIBILITY --------
+# --- GPU VISIBILITY ---
 gpus=0,1,2,3
 export CUDA_VISIBLE_DEVICES=$gpus
 # 0,1,2,3,4,5,6,7
 
 # nohup bash run_multiple_model.sh > log/run_multiple_model.log 2>&1 &
 
-# -------- Run --------
+# --- Run ---
 for model_name in "${models[@]}"; do
-    # -------- Log output --------
+    # --- Log output ---
     echo "Job started, $model_name at $now ($((++i))/${#models[@]})"
-    # -------- Get time --------
+    # --- Get time ---
     now=$(date +"%m-%d_%H-%M")
     nohup python main.py \
     --model_name "$model_name" \
