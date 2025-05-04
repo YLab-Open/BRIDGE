@@ -106,20 +106,25 @@ if __name__ == "__main__":
 
     # -------- Model setup ----------
     # Note: Only Qwen3 models require the enable_thinking.
-    if hasattr(args, "enable_thinking") and args.model_name.startswith("qwen3"):
-        print("Enable thinking mode for Qwen3 models.")
+    if args.model_name.lower().startswith("qwen3"):
+        if hasattr(args, "enable_thinking"):
+            if args.enable_thinking:
+                print(f"Running Qwen3 model {args.model_name} with thinking ability.")
+            else:
+                print(f"Running Qwen3 model {args.model_name} without thinking ability.")
+        else:
+            args.enable_thinking = False
+            print(f"Running Qwen3 model {args.model_name} without thinking ability.")
     else:
         # Set enable_thinking to None for other models
         args.enable_thinking = None
+        print(f"Enable thinking mode not applicable for model {args.model_name}.")
 
     # ---------- Experiment config ----------
     args.tasks.sort()
     list_exp_config = [tuple(item) for item in args.experiments]
 
     num_exp_all = len(args.tasks) * len(list_exp_config)
-
-    # Set the name of the experiment
-    setproctitle.setproctitle(f"Benchmark: {args.model_name}-{num_exp_all} runs.")
 
     # Get the model path
     with open(
@@ -134,6 +139,16 @@ if __name__ == "__main__":
 
     # Initialize the model and tokenizer
     tokenizer, model = load_model(args)
+
+    # For Qwen3 models, modify its model name based on the "enable thinking" flag
+    if args.model_name.lower().startswith("qwen3") and hasattr(args, "enable_thinking"):
+        if args.enable_thinking:
+            args.model_name += "-Thinking"
+        else:
+            args.model_name += "-Non-Thinking"
+
+    # Set the name of the experiment
+    setproctitle.setproctitle(f"Benchmark: {args.model_name}-{num_exp_all} runs.")
 
     # Record the time of the start
     time_start = datetime.datetime.now()
