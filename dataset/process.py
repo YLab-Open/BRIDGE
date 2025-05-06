@@ -1,26 +1,11 @@
 from functools import partial
+from .config import extract_cot_pred
+from util.preprocess import process_punc_to_en
 
 
-def process_punc_to_en(text):
+def process_pred(text, flag_lower=True, flag_punc_to_en=True):
     """
     Converts common punctuation into English version.
-    Input:
-        text: str
-    Output:
-        text: str
-    """
-    # define the mapping
-    FULL_ANGLE_ALPHABET = r"""　“‘”’，。：；＂＃＄％＆＇＊＋－．／０１２３４５６７８９＜＝＞＠ＡＢＣＤＥＦＧＨＩＪＫＬＭＮＯＰＱＲＳＴＵＶＷＸＹＺ［＼］＾＿｀ａｂｃｄｅｆｇｈｉｊｋｌｍｎｏｐｑｒｓｔｕｖｗｘｙｚ｛｜｝（）～"""
-    HALF_ANGLE_ALPHABET = r""" "'"',.:;"#$%&'*+-./0123456789<=>@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\]^_`abcdefghijklmnopqrstuvwxyz{|}()~"""
-
-    translation_table = str.maketrans(FULL_ANGLE_ALPHABET, HALF_ANGLE_ALPHABET)
-
-    return text.translate(translation_table)
-
-
-def process_text_clean(text, flag_lower=True, flag_punc_to_en=True):
-    """
-    Clean the text.
     Input:
         text: str
         flag_lower: bool
@@ -32,6 +17,22 @@ def process_text_clean(text, flag_lower=True, flag_punc_to_en=True):
         text = text.lower()
     if flag_punc_to_en:
         text = process_punc_to_en(text)
+    return text.strip()
+
+
+def extract_pred(text, prompt_mode="direct"):
+    """
+    Extracts the prediction from the text based on the prompt mode.
+    Input:
+        text: str
+        prompt_mode: str
+    Output:
+        text: str
+    """
+    if "</think>" in text:
+        text = text.split("</think>", 1)[1]
+    if "cot" in prompt_mode:
+        text = extract_cot_pred(text)
     return text.strip()
 
 

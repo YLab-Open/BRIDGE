@@ -1,16 +1,13 @@
-import os
-import json
 import regex
 import numpy as np
 
 # import self-defined modules
 from .dataset import GeneralDataset, GeneralTask, GeneralEvaluation
-from .config import get_pred_none_ext, extract_cot_pred
-from .process import process_text_clean
+from .config import get_pred_none_ext
+from .process import process_pred, extract_pred
 from metric.extraction import (
     calc_metrics_ext,
     ext_compute_overall_metrics,
-    calc_metrics_ext_qa,
 )
 
 
@@ -39,7 +36,7 @@ class Task_ext(GeneralEvaluation):
         list_list_dict_entity = []
         for dict_data in list_dict_data:
             list_dict_entity = []
-            list_line = process_text_clean(dict_data["output"]).split(self.sep_event)
+            list_line = process_pred(dict_data["output"]).split(self.sep_event)
             list_line = [line.strip() for line in list_line if line.strip() != ""]
             for line_one in list_line:
                 result = regex.search(self.list_pattern[0], line_one, regex.IGNORECASE)
@@ -70,13 +67,10 @@ class Task_ext(GeneralEvaluation):
         for idx_data, dict_data in enumerate(list_dict_data):
             list_dict_entity = []
             if dict_data["pred"].strip() != "":
-                response = process_text_clean(
+                response = process_pred(
                     dict_data["pred"], flag_lower=True, flag_punc_to_en=True
                 )
-                if "</think>" in response:
-                    response = response.split("</think>", 1)[1]
-                if "cot" in prompt_mode:
-                    response = extract_cot_pred(response)
+                response = extract_pred(response, prompt_mode=prompt_mode)
                 # Split the response by event
                 list_line = []
                 for line in response.split(self.sep_event):
@@ -489,7 +483,7 @@ class Task_ext_n2c2_2018_Track2_Adverse_Drug_Events_and_Medication_Extraction(Ta
         list_list_dict_entity = []
         for dict_data in list_dict_data:
             list_dict_entity = []
-            list_line = process_text_clean(dict_data["output"]).split(self.sep_event)
+            list_line = process_pred(dict_data["output"]).split(self.sep_event)
             list_line = [line.strip() for line in list_line if line.strip() != ""]
             for line_one in list_line:
                 line_one = self.convert(line_one)
@@ -517,11 +511,10 @@ class Task_ext_n2c2_2018_Track2_Adverse_Drug_Events_and_Medication_Extraction(Ta
             list_dict_entity = []
             if dict_data["pred"].strip() != "":
                 # Split the response by event
-                str_line = process_text_clean(
+                str_line = process_pred(
                     dict_data["pred"], flag_lower=True, flag_punc_to_en=True
                 )
-                if "cot" in prompt_mode:
-                    str_line = extract_cot_pred(str_line)
+                str_line = extract_pred(str_line, prompt_mode=prompt_mode)
                 list_line = str_line.split(self.sep_event)
                 # Filter the invalid entity
                 list_line = [line.strip() for line in list_line if line.strip() != ""]

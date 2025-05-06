@@ -12,7 +12,7 @@ experiments:
 # --- Model settings ---
 # --- Note: For Qwen3, switches between thinking and non-thinking modes. 
 # --- Default is True. Not impacting the inferences of other models.
-enable_thinking: true
+enable_thinking: True
 
 # --- Batch size ---
 # --- Note: actually only works for "hf" inference mode, as vllm will dynamically adjust the batch size during inference.

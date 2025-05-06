@@ -111,7 +111,9 @@ if __name__ == "__main__":
             if args.enable_thinking:
                 print(f"Running Qwen3 model {args.model_name} with thinking ability.")
             else:
-                print(f"Running Qwen3 model {args.model_name} without thinking ability.")
+                print(
+                    f"Running Qwen3 model {args.model_name} without thinking ability."
+                )
         else:
             args.enable_thinking = False
             print(f"Running Qwen3 model {args.model_name} without thinking ability.")
@@ -218,7 +220,7 @@ if __name__ == "__main__":
 
             # Set experiment name and result path
             args.name_exp = (
-                f"{task_name}-{args.prompt_mode}-{args.decoding_strategy}-{args.seed}"
+                f"{task_name}.{args.prompt_mode}-{args.decoding_strategy}-{args.seed}"
             )
             args.path_file_result = os.path.join(
                 args.path_dir_result, f"{args.name_exp}.result.json"

@@ -1,12 +1,10 @@
 import os
 import sys
 import numpy as np
-import torch
 import json
 import time
 import logging
 import random
-import transformers
 from scipy import stats
 
 

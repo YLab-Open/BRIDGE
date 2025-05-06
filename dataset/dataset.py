@@ -72,6 +72,8 @@ class GeneralTask:
         with open(self.path_file_data, "r", encoding="utf-8") as file:
             list_dict_data = json.load(file)
 
+        self.language = list_dict_data[0]["language"]
+
         # Ensure data is not empty
         if not list_dict_data:
             raise ValueError(f"No data found in {self.path_file_data}")
@@ -364,6 +366,7 @@ class GeneralEvaluation(GeneralTask):
         """
         with open(file_result, "r", encoding="utf-8") as f:
             list_dict_result = json.load(f)
+            # print(f"Load {file_result} with {len(list_dict_result)} samples.")
 
         list_label = self.get_label(list_dict_result, prompt_mode)
         list_pred = self.get_pred(list_dict_result, prompt_mode)

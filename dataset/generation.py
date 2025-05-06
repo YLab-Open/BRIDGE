@@ -1,13 +1,10 @@
-import os
-import json
 import regex
 import numpy as np
 
 # import self-defined modules
 from .dataset import GeneralDataset, GeneralTask, GeneralEvaluation
-from .config import extract_cot_pred
 from .config import get_pred_none_gen, get_pred_none_gen_qa_mul
-from .process import process_text_clean
+from .process import process_pred, extract_pred
 from metric.generation import calc_metrics_gen
 
 
@@ -27,11 +24,11 @@ class Task_gen(GeneralEvaluation):
         for dict_data in list_dict_data:
             if "output_list" not in dict_data:
                 label = dict_data["output"]
-                label = process_text_clean(label, flag_lower=True, flag_punc_to_en=True)
+                label = process_pred(label, flag_lower=True, flag_punc_to_en=True)
             else:
                 label = dict_data["output_list"]
                 label = [
-                    process_text_clean(l, flag_lower=True, flag_punc_to_en=True)
+                    process_pred(l, flag_lower=True, flag_punc_to_en=True)
                     for l in label
                 ]
             list_label.append(label)
@@ -44,13 +41,10 @@ class Task_gen(GeneralEvaluation):
     def get_pred(self, list_dict_data, prompt_mode="direct"):
         list_pred = []
         for dict_data in list_dict_data:
-            response = process_text_clean(
+            response = process_pred(
                 dict_data["pred"], flag_lower=True, flag_punc_to_en=True
             )
-            if "</think>" in response:
-                response = response.split("</think>", 1)[1]
-            if "cot" in prompt_mode:
-                response = extract_cot_pred(response)
+            response = extract_pred(response, prompt_mode=prompt_mode)
             if response == "":
                 list_pred.append(-1)
             else:
@@ -118,7 +112,7 @@ class Task_gen_extract(Task_gen):
     def get_label(self, list_dict_data, prompt_mode="direct"):
         list_answer = []
         for dict_data in list_dict_data:
-            line = process_text_clean(dict_data["output"]).strip()
+            line = process_pred(dict_data["output"]).strip()
             result = regex.search(self.list_pattern[0], line, regex.IGNORECASE)
             list_answer.append(result.group(1).strip())
 
@@ -133,13 +127,10 @@ class Task_gen_extract(Task_gen):
         for idx_data, dict_data in enumerate(list_dict_data):
             if dict_data["pred"].strip() != "":
                 # Split the response by event
-                response = process_text_clean(
+                response = process_pred(
                     dict_data["pred"], flag_lower=True, flag_punc_to_en=True
                 )
-                if "</think>" in response:
-                    response = response.split("</think>", 1)[1]
-                if "cot" in prompt_mode:
-                    response = extract_cot_pred(response)
+                response = extract_pred(response, prompt_mode=prompt_mode)
                 flag_match = False
                 for pattern in self.list_pattern:
                     result = regex.search(pattern, response, regex.IGNORECASE)
@@ -187,7 +178,7 @@ class Task_gen_extract_mul(Task_gen):
         num_question = len(self.list_question_pattern)
         for dict_data in list_dict_data:
             list_answer = [-1] * num_question
-            list_line = process_text_clean(dict_data["output"]).split(self.sep_event)
+            list_line = process_pred(dict_data["output"]).split(self.sep_event)
             list_line = [line.strip() for line in list_line if line.strip() != ""]
             for line_one in list_line:
                 for idx, dict_pattern in enumerate(self.list_question_pattern):
@@ -210,13 +201,10 @@ class Task_gen_extract_mul(Task_gen):
         for idx_data, dict_data in enumerate(list_dict_data):
             list_answer = [-1] * num_question
             if dict_data["pred"].strip() != "":
-                response = process_text_clean(
+                response = process_pred(
                     dict_data["pred"], flag_lower=True, flag_punc_to_en=True
                 )
-                if "</think>" in response:
-                    response = response.split("</think>", 1)[1]
-                if "cot" in prompt_mode:
-                    response = extract_cot_pred(response)
+                response = extract_pred(response, prompt_mode=prompt_mode)
                 # Split the response by event
                 list_line = response.split(self.sep_event)
                 # Filter the invalid entity
@@ -321,16 +309,11 @@ class Task_gen_xxx(Task_gen):
         super().__init__(args, task)
 
 
-# Bowen
-
-
-# 76-1
 class Task_gen_MTS_Dialog_MEDIQA_2023_chat_task_A(Task_gen):
     def __init__(self, args, task):
         super().__init__(args, task)
 
 
-# 76-3
 class Task_gen_MTS_Dialog_MEDIQA_2023_sum_task_B(Task_gen):
     def __init__(self, args, task):
         super().__init__(args, task)

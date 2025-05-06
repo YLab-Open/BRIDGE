@@ -1,4 +1,3 @@
-import os
 import json
 import regex
 import numpy as np
@@ -11,8 +10,7 @@ from .config import (
     get_pred_none_clf_mul_label,
     get_pred_none_clf_mul_question,
 )
-from .process import process_text_clean
-from .config import extract_cot_pred
+from .process import process_pred, extract_pred
 from metric.classification import (
     calc_metrics_clf,
     get_arr_multi_hot,
@@ -45,7 +43,7 @@ class Task_clf_binary(GeneralEvaluation):
     def get_label(self, list_dict_data, prompt_mode="direct"):
         list_label = []
         for dict_data in list_dict_data:
-            string_label = process_text_clean(
+            string_label = process_pred(
                 dict_data["output"], flag_lower=True, flag_punc_to_en=True
             )
             label = regex.search(
@@ -61,20 +59,17 @@ class Task_clf_binary(GeneralEvaluation):
     def get_pred(self, list_dict_data, prompt_mode="direct"):
         list_pred = []
         for dict_data in list_dict_data:
-            response = process_text_clean(
+            response = process_pred(
                 dict_data["pred"], flag_lower=True, flag_punc_to_en=True
             )
-            if "</think>" in response:
-                response = response.split("</think>", 1)[1]
-            if "cot" in prompt_mode:
-                response = extract_cot_pred(response)
+            response = extract_pred(response, prompt_mode=prompt_mode)
             # Initialize the prediction as -1
             pred = -1
             # Find the label by searching the list of patterns
             for pattern in self.list_pattern:
                 result_found = regex.search(pattern, response, regex.IGNORECASE)
                 if result_found:
-                    # Transform the texual response to binary label
+                    # Transform the textual response to binary label
                     pred = self.dict_label_map[result_found.group(1)]
                     break
             # Append the prediction to the list of prediction
@@ -113,7 +108,7 @@ class Task_clf_mul_class(GeneralEvaluation):
     def get_label(self, list_dict_data, prompt_mode="direct"):
         list_label = []
         for dict_data in list_dict_data:
-            string_label = process_text_clean(
+            string_label = process_pred(
                 dict_data["output"], flag_lower=True, flag_punc_to_en=True
             )
             result_match = regex.search(
@@ -129,13 +124,10 @@ class Task_clf_mul_class(GeneralEvaluation):
     def get_pred(self, list_dict_data, prompt_mode="direct"):
         list_pred = []
         for dict_data in list_dict_data:
-            response = process_text_clean(
+            response = process_pred(
                 dict_data["pred"], flag_lower=True, flag_punc_to_en=True
             )
-            if "</think>" in response:
-                response = response.split("</think>", 1)[1]
-            if "cot" in prompt_mode:
-                response = extract_cot_pred(response)
+            response = extract_pred(response, prompt_mode=prompt_mode)
             pred = -1
             for pattern in self.list_pattern:
                 result_found = regex.search(pattern, response, regex.IGNORECASE)
@@ -182,7 +174,7 @@ class Task_clf_mul_label(GeneralEvaluation):
         list_list_label = []
         for dict_data in list_dict_data:
             list_label = []
-            string_result = process_text_clean(
+            string_result = process_pred(
                 dict_data["output"], flag_lower=True, flag_punc_to_en=True
             )
             # Find the string of result by seaching the prefix pattern
@@ -213,13 +205,10 @@ class Task_clf_mul_label(GeneralEvaluation):
         list_list_pred = []
         for dict_data in list_dict_data:
             list_pred = []
-            response = process_text_clean(
+            response = process_pred(
                 dict_data["pred"], flag_lower=True, flag_punc_to_en=True
             )
-            if "</think>" in response:
-                response = response.split("</think>", 1)[1]
-            if "cot" in prompt_mode:
-                response = extract_cot_pred(response)
+            response = extract_pred(response, prompt_mode=prompt_mode)
             for pattern in self.list_pattern:
                 result_match = regex.search(pattern, response, regex.IGNORECASE)
                 if result_match:
@@ -344,7 +333,7 @@ class Task_clf_mul_question(GeneralEvaluation):
         # expected output: "label_of_question_1, label_of_question_2, ..."
         list_list_label = [[] for _ in range(len(self.dict_list_pattern))]
         for dict_data in list_dict_data:
-            string_label_all = process_text_clean(
+            string_label_all = process_pred(
                 dict_data["output"], flag_lower=True, flag_punc_to_en=True
             )
             for string_label in string_label_all.split(self.sep_label):
@@ -366,13 +355,10 @@ class Task_clf_mul_question(GeneralEvaluation):
         list_list_pred = []
         for dict_data in list_dict_data:
             list_label = [-1 for _ in range(num_questions)]
-            response = process_text_clean(
+            response = process_pred(
                 dict_data["pred"], flag_lower=True, flag_punc_to_en=True
             )
-            if "</think>" in response:
-                response = response.split("</think>", 1)[1]
-            if "cot" in prompt_mode:
-                response = extract_cot_pred(response)
+            response = extract_pred(response, prompt_mode=prompt_mode)
             # The flag indicates whether the labels for this sample are found
             list_flag_found_label = [False for _ in range(num_questions)]
             for line_one in response.split(self.sep_label):

@@ -8,7 +8,7 @@ from scipy.stats import pearsonr, spearmanr
 from dataset.config import get_models_evaluate, get_metrics_clf
 
 
-def calc_metrics_clf(list_pred, list_label, average=False):
+def calc_metrics_clf(list_pred, list_label, average=None):
     """
     Calculate metrics for classification tasks, including accuracy, f1, precision, recall
 
@@ -22,7 +22,7 @@ def calc_metrics_clf(list_pred, list_label, average=False):
     # get all valid labels
     valid_labels = sorted(set(list_label))
 
-    if not average:
+    if average is None:
         list_average = ["macro", "micro"]
     else:
         if isinstance(average, str):

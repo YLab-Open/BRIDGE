@@ -41,8 +41,8 @@ class Tokenizer_gen:
 
 class Tokenizer_gen_zh_jp:
     def __init__(self, lang="zh"):
-        if lang != "zh" and lang != "jp":
-            raise ValueError("Only support zh and jp")
+        if lang not in ["cn", "zh", "jp", "ja"]:
+            raise ValueError("Only support Chinese and Japanese")
 
     def tokenize(self, text):
         # Option for jp: janome
@@ -82,12 +82,12 @@ def calc_metrics_gen(list_pred, list_label, lang="en"):
     dict_metrics_sample = {"bleu": [], "rouge": [], "meteor": [], "bertscore": []}
 
     # Tokenizer
-    if lang == "zh" or lang == "jp":
+    if lang in ["cn", "zh", "jp", "ja"]:
         tokenizer = Tokenizer_gen_zh_jp(lang)
     else:
         tokenizer = Tokenizer_gen(lang)
 
-    # For rogue
+    # For ROUGE
     if lang == "en":
         rouge = rouge_scorer.RougeScorer(
             ["rouge1", "rouge2", "rougeL"]

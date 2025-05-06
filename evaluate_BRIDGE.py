@@ -1,11 +1,12 @@
-from dataset.config import *
+import os
 from model.init import seed_everything
 from dataset.classification import *
 from dataset.extraction import *
 from dataset.generation import *
-from metric.classification import print_metrics_clf
+from dataset.config import get_models_evaluate
 from metric.extraction import print_metrics_ext
 from metric.generation import print_metrics_gen
+from metric.classification import print_metrics_clf
 
 
 class EmptyArgs:
