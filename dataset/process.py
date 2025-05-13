@@ -311,7 +311,7 @@ def get_formatted_chat(
             - num_token_reserve
         )
         # Truncate user input first to fit into remaining tokens
-        truncated_user = truncate_text_func(input_user, tokenizer, remain_for_user)
+        truncated_user = truncate_text_func(input_user, max_tokens=remain_for_user)
 
         # Construct the chat sequence without examples
         return format_message(input_system, truncated_user, [])
