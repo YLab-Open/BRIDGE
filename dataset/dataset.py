@@ -278,17 +278,18 @@ class GeneralEvaluation(GeneralTask):
                 # decoding strategy: greedy
                 # seed: 42
                 # file: ADE identification-direct-5-shot-greedy-42.result.json
-                file_prompt_mode = file_name.replace(f"{self.name}-", "")
-                if "greedy" in file_prompt_mode:
-                    file_prompt_mode = file_prompt_mode.split("-greedy")[0]
-                elif "sampling" in file_prompt_mode:
-                    file_prompt_mode = file_prompt_mode.split("-sampling")[0]
-                else:
-                    raise ValueError(
-                        f"Invalid file name: {file_name}. Expected 'greedy' or 'sampling'."
-                    )
-                if file_name.endswith(".json") and prompt_mode == file_prompt_mode:
-                    list_file_result.append(os.path.join(model_path, file_name))
+                if file_name.endswith(".json"):
+                    file_prompt_mode = file_name.replace(f"{self.name}-", "")
+                    if "greedy" in file_prompt_mode:
+                        file_prompt_mode = file_prompt_mode.split("-greedy")[0]
+                    elif "sampling" in file_prompt_mode:
+                        file_prompt_mode = file_prompt_mode.split("-sampling")[0]
+                    else:
+                        raise ValueError(
+                            f"Invalid file name: {file_name}. Expected 'greedy' or 'sampling'."
+                        )
+                    if prompt_mode == file_prompt_mode:
+                        list_file_result.append(os.path.join(model_path, file_name))
             list_file_result.sort()
 
             return list_file_result
