@@ -87,16 +87,6 @@ If you find this leaderboard useful for your research and applications, please c
     primaryClass={cs.CL},
     url={https://arxiv.org/abs/2504.19467},
 }
-@article{clinical-text-review,
-    title={Clinical text datasets for medical artificial intelligence and large language models—a systematic review},
-    author={Wu, Jiageng and Liu, Xiaocong and Li, Minghui and Li, Wanxin and Su, Zichang and Lin, Shixu and Garay, Lucas and Zhang, Zhiyun and Zhang, Yujie and Zeng, Qingcheng and Shen, Jie and Yuan, Changzheng and Yang, Jie},
-    journal={NEJM AI},
-    volume={1},
-    number={6},
-    pages={AIra2400012},
-    year={2024},
-    publisher={Massachusetts Medical Society}
-}
 ```
 If you use the datasets in BRIDGE, please also cite the original paper of datasets, which can be found in our BRIDGE paper.
 

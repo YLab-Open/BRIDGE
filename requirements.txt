@@ -6,7 +6,6 @@ aiosignal==1.4.0
 annotated-types==0.7.0
 anyio==4.10.0
 astor==0.8.1
-asttokens @ file:///home/conda/feedstock_root/build_artifacts/asttokens_1733250440834/work
 attrs==25.3.0
 bert-score==0.3.13
 blake3==1.0.5
@@ -18,16 +17,11 @@ charset-normalizer==3.4.2
 chz==0.3.0
 click==8.2.1
 cloudpickle==3.1.1
-comm @ file:///home/conda/feedstock_root/build_artifacts/bld/rattler-build_comm_1753453984/work
 compressed-tensors==0.10.2
-contourpy @ file:///home/conda/feedstock_root/build_artifacts/contourpy_1754063574308/work
 cuda-bindings==12.9.0
 cuda-python==12.9.0
 cupy-cuda12x==13.5.1
-cycler @ file:///home/conda/feedstock_root/build_artifacts/cycler_1733332471406/work
 datasets==4.0.0
-debugpy @ file:///home/conda/feedstock_root/build_artifacts/bld/rattler-build_debugpy_1752827111/work
-decorator @ file:///home/conda/feedstock_root/build_artifacts/decorator_1740384970518/work
 deepseek-tokenizer==0.1.3
 depyf==0.19.0
 dill==0.3.8
@@ -39,14 +33,11 @@ docstring_parser==0.17.0
 einops==0.8.1
 email_validator==2.2.0
 evaluate==0.4.5
-exceptiongroup @ file:///home/conda/feedstock_root/build_artifacts/exceptiongroup_1746947292760/work
-executing @ file:///home/conda/feedstock_root/build_artifacts/executing_1745502089858/work
 fastapi==0.116.1
 fastapi-cli==0.0.8
 fastapi-cloud-cli==0.1.5
 fastrlock==0.8.3
 filelock==3.18.0
-fonttools @ file:///home/conda/feedstock_root/build_artifacts/fonttools_1752722674086/work
 frozenlist==1.7.0
 fsspec==2025.3.0
 gguf==0.17.1
@@ -73,24 +64,15 @@ httpx==0.28.1
 httpx-sse==0.4.1
 huggingface-hub==0.35.0rc0
 idna==3.10
-importlib_metadata @ file:///home/conda/feedstock_root/build_artifacts/bld/rattler-build_importlib-metadata_1747934053/work
 iniconfig==2.1.0
 inquirerpy==0.3.4
 interegular==0.3.3
-ipykernel @ file:///home/conda/feedstock_root/build_artifacts/ipykernel_1754352855579/work
-ipython @ file:///home/conda/feedstock_root/build_artifacts/bld/rattler-build_ipython_1751465044/work
-ipython_pygments_lexers @ file:///home/conda/feedstock_root/build_artifacts/ipython_pygments_lexers_1737123620466/work
 ipywidgets==8.1.7
-jedi @ file:///home/conda/feedstock_root/build_artifacts/jedi_1733300866624/work
 Jinja2==3.1.6
 jiter==0.10.0
-joblib @ file:///home/conda/feedstock_root/build_artifacts/joblib_1748019130050/work
 jsonschema==4.25.0
 jsonschema-specifications==2025.4.1
-jupyter_client @ file:///home/conda/feedstock_root/build_artifacts/jupyter_client_1733440914442/work
-jupyter_core @ file:///home/conda/feedstock_root/build_artifacts/jupyter_core_1748333051527/work
 jupyterlab_widgets==3.0.15
-kiwisolver @ file:///home/conda/feedstock_root/build_artifacts/kiwisolver_1751493865144/work
 lark==1.2.2
 llguidance==0.7.30
 llvmlite==0.44.0
@@ -99,7 +81,6 @@ lxml==6.0.0
 markdown-it-py==3.0.0
 MarkupSafe==3.0.2
 matplotlib==3.10.5
-matplotlib-inline @ file:///home/conda/feedstock_root/build_artifacts/matplotlib-inline_1733416936468/work
 mcp==1.12.3
 mdurl==0.1.2
 mistral_common==1.8.3
@@ -109,12 +90,11 @@ msgspec==0.19.0
 multidict==6.6.3
 multiprocess==0.70.16
 munkres==1.1.4
-nest_asyncio @ file:///home/conda/feedstock_root/build_artifacts/nest-asyncio_1733325553580/work
 networkx==3.5
 ninja==1.11.1.4
 nltk==3.9.1
 numba==0.61.2
-numpy @ file:///home/conda/feedstock_root/build_artifacts/numpy_1747544634713/work/dist/numpy-2.2.6-cp312-cp312-linux_x86_64.whl#sha256=c3905be56f0422fc76a7847e19cecc5bd3daf2dd53b346a3db57c290db478e50
+numpy==2.2.6
 nvidia-cublas-cu12==12.8.4.1
 nvidia-cuda-cupti-cu12==12.8.90
 nvidia-cuda-nvrtc-cu12==12.8.93
@@ -139,25 +119,15 @@ opentelemetry-api==1.36.0
 opentelemetry-sdk==1.36.0
 opentelemetry-semantic-conventions==0.57b0
 outlines_core==0.2.10
-packaging @ file:///home/conda/feedstock_root/build_artifacts/bld/rattler-build_packaging_1745345660/work
 pandas==2.3.1
-parso @ file:///home/conda/feedstock_root/build_artifacts/parso_1733271261340/work
 partial-json-parser==0.2.1.1.post6
-pexpect @ file:///home/conda/feedstock_root/build_artifacts/pexpect_1733301927746/work
 pfzy==0.3.4
-pickleshare @ file:///home/conda/feedstock_root/build_artifacts/pickleshare_1733327343728/work
-pillow @ file:///home/conda/feedstock_root/build_artifacts/pillow_1751481997470/work
-platformdirs @ file:///home/conda/feedstock_root/build_artifacts/bld/rattler-build_platformdirs_1746710438/work
 pluggy==1.6.0
 prometheus-fastapi-instrumentator==7.1.0
 prometheus_client==0.22.1
-prompt_toolkit @ file:///home/conda/feedstock_root/build_artifacts/prompt-toolkit_1744724089886/work
 propcache==0.3.2
 proto-plus==1.26.1
 protobuf==5.29.5
-psutil @ file:///home/conda/feedstock_root/build_artifacts/psutil_1740663123172/work
-ptyprocess @ file:///home/conda/feedstock_root/build_artifacts/ptyprocess_1733302279685/work/dist/ptyprocess-0.7.0-py2.py3-none-any.whl#sha256=92c32ff62b5fd8cf325bec5ab90d7be3d2a8ca8c8a3813ff487a8d2002630d1f
-pure_eval @ file:///home/conda/feedstock_root/build_artifacts/pure_eval_1733569405015/work
 py-cpuinfo==9.0.0
 pyarrow==21.0.0
 pyasn1==0.6.1
@@ -169,19 +139,15 @@ pydantic==2.12.0a1
 pydantic-extra-types==2.10.5
 pydantic-settings==2.10.1
 pydantic_core==2.37.2
-Pygments @ file:///home/conda/feedstock_root/build_artifacts/pygments_1750615794071/work
 pynvml==12.0.0
-pyparsing @ file:///home/conda/feedstock_root/build_artifacts/bld/rattler-build_pyparsing_1753873557/work
 PySide6==6.9.1
 pytest==8.4.1
-python-dateutil @ file:///home/conda/feedstock_root/build_artifacts/bld/rattler-build_python-dateutil_1751104122/work
 python-dotenv==1.1.1
 python-json-logger==4.0.0.dev0
 python-multipart==0.0.20
 pytorch-triton==3.4.0+git11ec6354
 pytz==2025.2
 PyYAML==6.0.2
-pyzmq @ file:///home/conda/feedstock_root/build_artifacts/pyzmq_1754238043589/work
 ray==2.48.0
 referencing==0.36.2
 regex==2025.7.34
@@ -193,7 +159,6 @@ rouge_score==0.1.2
 rpds-py==0.26.0
 rsa==4.9.1
 safetensors==0.6.1
-scikit-learn @ file:///home/conda/feedstock_root/build_artifacts/scikit-learn_1752825729389/work/dist/scikit_learn-1.7.1-cp312-cp312-linux_x86_64.whl#sha256=b38519e6f6c87a052a422a9c8d370d68b9dea3f43e18f6f608274694c8cac6f0
 scipy==1.16.1
 sentencepiece==0.2.0
 sentry-sdk==3.0.0a4
@@ -202,45 +167,36 @@ setuptools==79.0.1
 shapely==2.1.1
 shellingham==1.5.4
 shiboken6==6.9.1
-six @ file:///home/conda/feedstock_root/build_artifacts/bld/rattler-build_six_1753199211/work
 sniffio==1.3.1
 soundfile==0.13.1
 soxr==0.5.0.post1
 sse-starlette==3.0.2
-stack_data @ file:///home/conda/feedstock_root/build_artifacts/stack_data_1733569443808/work
 starlette==0.47.2
 structlog==25.4.0
 sympy==1.14.0
 tenacity==9.1.2
 termcolor==3.1.0
-threadpoolctl @ file:///home/conda/feedstock_root/build_artifacts/threadpoolctl_1741878222898/work
 tiktoken==0.10.0
 tokenizers==0.21.4
 torch==2.9.0.dev20250804+cu128
 torchaudio==2.8.0.dev20250804+cu128
 torchvision==0.24.0.dev20250804+cu128
-tornado @ file:///home/conda/feedstock_root/build_artifacts/tornado_1748003300911/work
 tqdm==4.67.1
-traitlets @ file:///home/conda/feedstock_root/build_artifacts/traitlets_1733367359838/work
 transformers==4.55.0
 triton==3.4.0+git663e04e8
 triton_kernels==1.0.0
 typer==0.16.0
 typing-inspection==0.4.1
-typing_extensions @ file:///home/conda/feedstock_root/build_artifacts/bld/rattler-build_typing_extensions_1751643513/work
 tzdata==2025.2
-unicodedata2 @ file:///home/conda/feedstock_root/build_artifacts/unicodedata2_1736692508163/work
 urllib3==2.5.0
 uvicorn==0.35.0
 uvloop==0.21.0
 vertexai==1.71.1
 vllm==0.10.1+gptoss
 watchfiles==1.1.0
-wcwidth @ file:///home/conda/feedstock_root/build_artifacts/wcwidth_1733231326287/work
 websockets==15.0.1
 wheel==0.45.1
 widgetsnbextension==4.0.14
 xgrammar==0.1.21
 xxhash==3.5.0
 yarl==1.20.1
-zipp @ file:///home/conda/feedstock_root/build_artifacts/zipp_1749421620841/work
