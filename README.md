@@ -23,7 +23,7 @@ Install the required packages, mainly including:
 python==3.12
 
 if need to run gpt-oss models, please install:
-    vllm==0.10.1+gptoss (details in: https://docs.vllm.ai/projects/recipes/en/latest/OpenAI/GPT-OSS.html#amd)
+    vllm==0.10.1+gptoss (details in: [gpt-oss vLLM Usage Guide](https://docs.vllm.ai/projects/recipes/en/latest/OpenAI/GPT-OSS.html#amd))
 
 Or, you can directly install vllm:
     pip install vllm==0.8.3
