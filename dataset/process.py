@@ -33,6 +33,8 @@ def extract_pred(text, prompt_mode="direct"):
         text = text.split("</think>", 1)[1]
     if "cot" in prompt_mode:
         text = extract_cot_pred(text)
+    if "assistantfinal" in text:
+        text = text.split("assistantfinal", 1)[1]
     return text.strip()
 
 
@@ -44,20 +46,11 @@ def get_truncate_text(text, tokenizer, max_tokens):
     return text
 
 
-def num_tokens_from_messages(messages, tokenizer, enable_thinking=None):
+def num_tokens_from_messages(messages, tokenizer, chat_kwargs=None):
     """Return the number of tokens used by a list of messages."""
-    if enable_thinking is not None:
-        # For Qwen3, switches between thinking and non-thinking modes. Default is True.
-        token_template = tokenizer.apply_chat_template(
-            messages,
-            tokenize=True,
-            add_generation_prompt=True,
-            enable_thinking=enable_thinking,
-        )
-    else:
-        token_template = tokenizer.apply_chat_template(
-            messages, tokenize=True, add_generation_prompt=True
-        )
+    token_template = tokenizer.apply_chat_template(
+        messages, tokenize=True, add_generation_prompt=True, **chat_kwargs
+    )
     token_template_count = len(token_template)
     return token_template_count
 
@@ -171,7 +164,7 @@ def format_chat(
     times_word_token=7,
     num_token_reserve=10,
     examples=[],
-    enable_thinking=None,
+    chat_kwargs=None,
 ):
     """
     Format the input for different models based on the prompt mode.
@@ -183,6 +176,7 @@ def format_chat(
         times_word_token: The factor for rough token calculation.
         num_token_reserve: The number of tokens to reserve for formatting.
         examples: Optional list of examples, each a dict with "input" and "output".
+        chat_kwargs: Additional keyword arguments for the tokenizer's apply_chat_template method.
 
     Returns:
         The formatted input text for large language models.
@@ -217,19 +211,6 @@ def format_chat(
             num_token_reserve=num_token_reserve,
             examples=examples,
         )
-    elif "qwen3" in model_name.lower() and enable_thinking is not None:
-        example_ids, formatted_input = format_chat_general(
-            model_name=model_name,
-            tokenizer=tokenizer,
-            language=language,
-            input_system=input_system,
-            input_user=input_user,
-            max_token_input=max_token_input,
-            times_word_token=times_word_token,
-            num_token_reserve=num_token_reserve,
-            examples=examples,
-            enable_thinking=enable_thinking,
-        )
     else:
         example_ids, formatted_input = format_chat_general(
             model_name=model_name,
@@ -241,6 +222,7 @@ def format_chat(
             times_word_token=times_word_token,
             num_token_reserve=num_token_reserve,
             examples=examples,
+            chat_kwargs=chat_kwargs,
         )
 
     if examples:
@@ -272,7 +254,7 @@ def get_formatted_chat(
     num_token_reserve=10,
     examples=[],
     flag_openai=False,
-    enable_thinking=None,
+    chat_kwargs=None,
 ):
     # Step 1: Rough token estimation (not exact, but a starting point)
     initial_estimated_token_count = estimate_token_rough(
@@ -294,7 +276,7 @@ def get_formatted_chat(
         get_token_func = partial(
             num_tokens_from_messages,
             tokenizer=tokenizer,
-            enable_thinking=enable_thinking,
+            chat_kwargs=chat_kwargs,
         )
         truncate_text_func = partial(get_truncate_text, tokenizer=tokenizer)
 
@@ -354,7 +336,7 @@ def format_chat_general(
     times_word_token=7,
     num_token_reserve=10,
     examples=[],
-    enable_thinking=None,
+    chat_kwargs=None,
 ):
     """
     Format the input for general models with optional examples and length truncation.
@@ -369,7 +351,8 @@ def format_chat_general(
         max_token_input (int): The maximum allowable token count for the model input.
         times_word_token (int): Multiplicative factor for rough token counting.
         num_token_reserve (int): Number of tokens to reserve (e.g., for generation).
-        list_example (list of dict): Optional examples, each dict contains {"input":..., "output":...}.
+        examples (list): Optional list of examples, each a dict with "input" and "output".
+        chat_kwargs (dict, optional): Additional keyword arguments for `tokenizer.apply_chat_template`.
 
     Returns:
         Example_ids: A list of example IDs used in the formatted input.
@@ -388,18 +371,6 @@ def format_chat_general(
             num_token_reserve=num_token_reserve,
             examples=examples,
         )
-    elif model_name.lower().startswith("qwen3") and enable_thinking is not None:
-        example_ids, formatted_chat = get_formatted_chat(
-            tokenizer=tokenizer,
-            language=language,
-            input_system=input_system,
-            input_user=input_user,
-            max_token_input=max_token_input,
-            times_word_token=times_word_token,
-            num_token_reserve=num_token_reserve,
-            examples=examples,
-            enable_thinking=enable_thinking,
-        )
     else:
         example_ids, formatted_chat = get_formatted_chat(
             tokenizer=tokenizer,
@@ -410,20 +381,13 @@ def format_chat_general(
             times_word_token=times_word_token,
             num_token_reserve=num_token_reserve,
             examples=examples,
+            chat_kwargs=chat_kwargs,
         )
 
     # Apply the chat template for final formatting
-    if model_name.lower().startswith("qwen3") and enable_thinking is not None:
-        formatted_input = tokenizer.apply_chat_template(
-            formatted_chat,
-            tokenize=False,
-            add_generation_prompt=True,
-            enable_thinking=enable_thinking,
-        )
-    else:
-        formatted_input = tokenizer.apply_chat_template(
-            formatted_chat, tokenize=False, add_generation_prompt=True
-        )
+    formatted_input = tokenizer.apply_chat_template(
+        formatted_chat, tokenize=False, add_generation_prompt=True, **chat_kwargs
+    )
 
     return example_ids, formatted_input
 

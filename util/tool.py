@@ -330,3 +330,42 @@ def get_mean_std_ci(data, confidence=0.95):
     # h = 1.96 * sem
 
     return mean, std, [mean - h, mean + h]
+
+
+def set_default_args(
+    args,
+    attr,
+    default,
+    valid_set=None,
+    cast=lambda x: x,
+):
+    """
+    Tool for setting default arguments.
+    If the attribute is not set, it will return the default value.
+    If the attribute is set, it will return the value after casting.
+    If valid_set is provided, it will check if the value is in the valid set.
+    If the value is not in the valid set, it will raise a ValueError.
+
+    Args:
+        args: The argparse.Namespace object containing the arguments.
+        attr: The attribute name to check.
+        default: The default value to return if the attribute is not set.
+        valid_set: A set of valid values for the attribute. If provided, the value will
+                   be checked against this set.
+        cast: A function to cast the value to a specific type. Default is identity function.
+    Returns:
+        The value of the attribute after casting, or the default value if the attribute is not set.
+    Raises:
+        ValueError: If the value is not in the valid set (if valid_set is provided
+    """
+    val = getattr(args, attr, None)
+    if val is None:
+        # Use default value
+        return default, True
+    val = cast(val)
+    if valid_set and val not in valid_set:
+        raise ValueError(
+            f"{attr}={val!r} is invalid; must be one of {sorted(valid_set)}"
+        )
+    # Use provided value
+    return val, False

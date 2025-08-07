@@ -38,7 +38,7 @@ class GeneralDataset(Dataset):
         self.tokenizer = tokenizer
         self.model_name = args.model_name
         self.examples = example
-        self.enable_thinking = args.enable_thinking
+        self.chat_kwargs = args.chat_kwargs
         self.max_token_input = args.max_token_input
         self.max_token_output = args.max_token_output
         self.dict_idx_cache = {}
@@ -55,7 +55,7 @@ class GeneralDataset(Dataset):
             data=self.data[idx],
             max_token_input=self.max_token_input,
             examples=self.examples,
-            enable_thinking=self.enable_thinking,
+            chat_kwargs=self.chat_kwargs,
         )
         self.dict_idx_cache[idx] = input_text
         return input_text
@@ -84,7 +84,7 @@ class GeneralTask:
             for dict_data in list_dict_data
             if dict_data["split"] == "train" and dict_data["output"].strip() != ""
         ]
-        self.dataset_val = [
+        self.dataset_dev = [
             dict_data
             for dict_data in list_dict_data
             if dict_data["split"] == "dev" and dict_data["output"].strip() != ""
@@ -99,7 +99,7 @@ class GeneralTask:
             "Load {} data: train: {}, val: {}, test: {}".format(
                 self.name,
                 len(self.dataset_train),
-                len(self.dataset_val),
+                len(self.dataset_dev),
                 len(self.dataset_test),
             )
         )
@@ -110,7 +110,7 @@ class GeneralTask:
         """
         print(f"Prompt mode: Direct")
         for idx_data, dict_data in enumerate(
-            self.dataset_train + self.dataset_val + self.dataset_test
+            self.dataset_train + self.dataset_dev + self.dataset_test
         ):
             instruction_direct = transform_instruction_to_direct(
                 dict_data["instruction"]
@@ -136,7 +136,7 @@ class GeneralTask:
         """
         print(f"Prompt mode: Chain of Thought")
         for idx_data, dict_data in enumerate(
-            self.dataset_train + self.dataset_val + self.dataset_test
+            self.dataset_train + self.dataset_dev + self.dataset_test
         ):
             instruction_cot = transform_instruction_to_cot(dict_data["instruction"])
             if instruction_cot:
@@ -187,37 +187,37 @@ class GeneralTask:
             num_example = int(regex.findall(r"\d+", self.prompt_mode)[0])
             self.setup_few_shot(num_example)
 
-    def dataloader_train(self):
+    def dataloader_train(self, batch_size, num_workers):
         return DataLoader(
             dataset=GeneralDataset(
                 self.args, self.dataset_train, self.tokenizer, self.examples
             ),
-            batch_size=self.args.batch_size,
+            batch_size=batch_size,
             shuffle=True,
             drop_last=True,
-            num_workers=self.args.num_workers,
+            num_workers=num_workers,
         )
 
-    def dataloader_val(self):
+    def dataloader_dev(self, batch_size, num_workers):
         return DataLoader(
             dataset=GeneralDataset(
-                self.args, self.dataset_val, self.tokenizer, self.examples
+                self.args, self.dataset_dev, self.tokenizer, self.examples
             ),
-            batch_size=self.args.batch_size,
+            batch_size=batch_size,
             shuffle=False,
             drop_last=False,
-            num_workers=self.args.num_workers,
+            num_workers=num_workers,
         )
 
-    def dataloader_test(self):
+    def dataloader_test(self, batch_size, num_workers):
         return DataLoader(
             dataset=GeneralDataset(
                 self.args, self.dataset_test, self.tokenizer, self.examples
             ),
-            batch_size=self.args.batch_size,
+            batch_size=batch_size,
             shuffle=False,
             drop_last=False,
-            num_workers=self.args.num_workers,
+            num_workers=num_workers,
         )
 
 

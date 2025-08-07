@@ -8,7 +8,8 @@ from pathlib import Path
 
 from util.tool import init_logger
 from dataset.dataset import GeneralTask
-from model.init import load_model, seed_everything
+from model.init import seed_everything
+from model.init import get_token_config, get_chat_config, load_model
 from model.inference import run_hf, run_vllm
 
 
@@ -18,6 +19,41 @@ def parse_gpu_list(gpu_str: str) -> list[int]:
         return [int(x) for x in gpu_str.split(",") if x != ""]
     except ValueError as e:
         raise ValueError(f"Invalid --gpus format: {gpu_str}") from e
+
+
+def init_model(args):
+    # Get the model path
+    with open(
+        "dict_model_path.json",
+        "r",
+        encoding="utf-8",
+    ) as f:
+        dict_model_path = json.load(f)
+    if args.model_name not in dict_model_path:
+        raise KeyError(f"Model {args.model_name} not found in dict_model_path.json")
+    args.model_path = dict_model_path[args.model_name]
+
+    # set the config for model and decoding
+    args.max_token_all, args.max_token_input, args.max_token_output = get_token_config(
+        args
+    )
+    # Set the process kwargs for apply_chat_template()
+    args.chat_kwargs = get_chat_config(args)
+
+    # Initialize the model and tokenizer
+    tokenizer, model = load_model(args)
+
+    # Add the suffix for models with different thinking mode
+    #  - For earlier Qwen3 models
+    if "enable_thinking" in args.chat_kwargs:
+        args.model_name += (
+            "-Thinking" if args.chat_kwargs["enable_thinking"] else "-Non-Thinking"
+        )
+    #  - For gpt-oss models
+    if "reasoning_effort" in args.chat_kwargs:
+        args.model_name += f"-{args.chat_kwargs['reasoning_effort']}"
+
+    return tokenizer, model
 
 
 def save_result(args, logger, list_dict_data, list_response, save_input=True):
@@ -31,10 +67,9 @@ def save_result(args, logger, list_dict_data, list_response, save_input=True):
         else:
             # Only save the response, not the original instruction and input
             dict_result = {
-                "task name": dict_data["task name"],
+                "id": dict_data["id"],
+                "type": dict_data["type"],
                 "language": dict_data["language"],
-                "task type": dict_data["task type"],
-                "idx": dict_data["idx"],
                 "output": dict_data["output"],
                 "pred": pred,
             }
@@ -54,22 +89,10 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
 
     parser.add_argument(
-        "--tasks",
-        type=list,
-        default=["ADE-ADE identification"],
-        help="The list of tasks to run.",
-    )
-    parser.add_argument(
         "--model_name",
         type=str,
         default="Meta-Llama-3.1-70B-Instruct",
         help="The name of the LLM model, only one model.",
-    )
-    parser.add_argument(
-        "--inference_mode",
-        type=str,
-        default="vllm",
-        help="The inference mode for the model.",
     )
     parser.add_argument(
         "--gpus",
@@ -87,6 +110,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     args.gpus = parse_gpu_list(args.gpus)
+    args.num_workers = len(args.gpus) * 2
 
     # ---------- Load YAML & merge ----------
     if args.config:
@@ -104,50 +128,14 @@ if __name__ == "__main__":
                 # Only set if not already set by CLI
                 setattr(args, k, v)
 
-    # -------- Model setup ----------
-    # Note: Only Qwen3 models require the enable_thinking.
-    if args.model_name.lower().startswith("qwen3"):
-        if hasattr(args, "enable_thinking"):
-            if args.enable_thinking:
-                print(f"Running Qwen3 model {args.model_name} with thinking ability.")
-            else:
-                print(
-                    f"Running Qwen3 model {args.model_name} without thinking ability."
-                )
-        else:
-            args.enable_thinking = False
-            print(f"Running Qwen3 model {args.model_name} without thinking ability.")
-    else:
-        # Set enable_thinking to None for other models
-        args.enable_thinking = None
-        print(f"Enable thinking mode not applicable for model {args.model_name}.")
-
     # ---------- Experiment config ----------
     args.tasks.sort()
     list_exp_config = [tuple(item) for item in args.experiments]
 
     num_exp_all = len(args.tasks) * len(list_exp_config)
 
-    # Get the model path
-    with open(
-        "dict_model_path.json",
-        "r",
-        encoding="utf-8",
-    ) as f:
-        dict_model_path = json.load(f)
-    if args.model_name not in dict_model_path:
-        raise KeyError(f"Model {args.model_name} not found in dict_model_path.json")
-    args.model_path = dict_model_path[args.model_name]
-
     # Initialize the model and tokenizer
-    tokenizer, model = load_model(args)
-
-    # For Qwen3 models, modify its model name based on the "enable thinking" flag
-    if args.model_name.lower().startswith("qwen3") and hasattr(args, "enable_thinking"):
-        if args.enable_thinking:
-            args.model_name += "-Thinking"
-        else:
-            args.model_name += "-Non-Thinking"
+    tokenizer, model = init_model(args)
 
     # Set the name of the experiment
     setproctitle.setproctitle(f"Benchmark: {args.model_name}-{num_exp_all} runs.")
@@ -183,7 +171,7 @@ if __name__ == "__main__":
         logger.info(f"Model: {args.model_name}: {args.model_path}")
         logger.info(f"Task: {task_name}")
         logger.info(
-            f"Size: train={len(task.dataset_train)}, val={len(task.dataset_val)}, "
+            f"Size: train={len(task.dataset_train)}, dev={len(task.dataset_dev)}, "
             f"test={len(task.dataset_test)}"
         )
 
@@ -209,7 +197,18 @@ if __name__ == "__main__":
             task.setup(tokenizer, prompt_mode)
 
             # Initialize the dataloader
-            dataloader = task.dataloader_test()
+            if args.mode == "test":
+                dataloader = task.dataloader_test(args.batch_size, args.num_workers)
+            elif args.mode == "dev":
+                dataloader = task.dataloader_dev(args.batch_size, args.num_workers)
+            elif args.mode == "train":
+                dataloader = task.dataloader_train(args.batch_size, args.num_workers)
+            else:
+                raise ValueError(
+                    f"Invalid mode: {args.mode}. Choose from 'train', 'dev', or 'test'."
+                )
+            logger.info(f"Running in {args.mode} mode, loading {args.mode} dataloader.")
+            logger.info(f"DataLoader: {len(dataloader)} batches")
 
             # Set the seed
             args.seed = seed
@@ -220,7 +219,7 @@ if __name__ == "__main__":
 
             # Set experiment name and result path
             args.name_exp = (
-                f"{task_name}.{args.prompt_mode}-{args.decoding_strategy}-{args.seed}"
+                f"{task_name}-{args.prompt_mode}-{args.decoding_strategy}-{args.seed}"
             )
             args.path_file_result = os.path.join(
                 args.path_dir_result, f"{args.name_exp}.result.json"

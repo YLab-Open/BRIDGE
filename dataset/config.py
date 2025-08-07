@@ -301,6 +301,12 @@ def get_models_evaluate():
         "gpt-4o",
         "gemini-2.0-flash",
         "gemini-1.5-pro",
+        "gpt-oss-20b-low",
+        "gpt-oss-20b-medium",
+        "gpt-oss-20b-high",
+        "gpt-oss-120b-low",
+        "gpt-oss-120b-medium",
+        "gpt-oss-120b-high",
     ]
 
     return list_model

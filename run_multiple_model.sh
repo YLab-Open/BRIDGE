@@ -20,7 +20,7 @@ models=(
     # "gemma-3-4b-it"
     # "gemma-3-12b-it"
     # "gemma-3-27b-it"
-    "Llama-3.1-8B-Instruct"
+    # "Llama-3.1-8B-Instruct"
     # "Llama-3.1-70B-Instruct"
     # "Llama-3.2-1B-Instruct"
     # "Llama-3.2-3B-Instruct"
@@ -47,17 +47,19 @@ models=(
     # "Phi-4"
     # "Qwen2.5-1.5B-Instruct"
     # "Qwen2.5-3B-Instruct"
-    "Qwen2.5-7B-Instruct"
+    # "Qwen2.5-7B-Instruct"
     # "Qwen2.5-72B-Instruct"
     # "QwQ-32B-Preview"
     # "QWQ-32B"
     # "Athene-V2-Chat"
     # "Yi-1.5-9B-Chat-16K"
     # "Yi-1.5-34B-Chat-16K"
+    "gpt-oss-20b"
+    # "gpt-oss-120b"
 )
 
 # --- GPU VISIBILITY ---
-gpus=0,1,2,3
+gpus=4
 export CUDA_VISIBLE_DEVICES=$gpus
 # 0,1,2,3,4,5,6,7
 

@@ -6,6 +6,7 @@ import numpy as np
 import transformers
 from vllm import LLM, SamplingParams
 from transformers import AutoTokenizer, AutoModelForCausalLM
+from util.tool import set_default_args
 
 
 def seed_everything(seed):
@@ -21,36 +22,35 @@ def seed_everything(seed):
     print(f"seed everything: {seed}")
 
 
-def load_config(args):
-    args.num_workers = len(args.gpus) * 2
-
+def get_token_config(args):
     # load the config for context window
     if not hasattr(args, "max_token_all"):
         if "Qwen" in args.model_name or "Athene" in args.model_name.lower():
             path_file_config = os.path.join(args.model_path, "tokenizer_config.json")
             with open(path_file_config, "r", encoding="utf-8") as f:
                 dict_config = json.load(f)
-            args.max_token_all = dict_config["model_max_length"]
+            max_token_all = dict_config["model_max_length"]
         elif "BioMistral-7B" == args.model_name:
-            args.max_token_all = 2048
+            max_token_all = 2048
         else:
             path_file_config = os.path.join(args.model_path, "config.json")
             with open(path_file_config, "r", encoding="utf-8") as f:
                 dict_config = json.load(f)
             if "max_position_embeddings" in dict_config:
-                args.max_token_all = dict_config["max_position_embeddings"]
+                max_token_all = dict_config["max_position_embeddings"]
             elif "text_config" in dict_config:
-                args.max_token_all = dict_config["text_config"][
-                    "max_position_embeddings"
-                ]
+                max_token_all = dict_config["text_config"]["max_position_embeddings"]
             else:
                 print(
                     f"Not assign max_token_all and can not find information in {path_file_config}"
                 )
                 return None
         print(
-            f"Not assign max_token_all, but found the information in model config: {args.max_token_all}"
+            f"Not assign max_token_all, but found the information in model config: {max_token_all}"
         )
+    else:
+        max_token_all = args.max_token_all
+        print(f"Manually set max_token_all: {max_token_all}")
 
     # Several model only support the short context window
     if not hasattr(args, "max_token_output"):
@@ -70,26 +70,74 @@ def load_config(args):
             # "Llama3-OpenBioLLM-70B",
             # "MMed-Llama-3-8B",
         ]:
-            args.max_token_output = 512
-            print(f"Not assign max_token_output, set: {args.max_token_output}")
+            max_token_output = 512
+            print(f"Not assign max_token_output, set: {max_token_output}")
         else:
-            args.max_token_output = int(args.max_token_all * 0.125)
+            max_token_output = int(max_token_all * 0.125)
             print(
-                f"Not assign max_token_output, set: {args.max_token_output} for 1/8 of max_token_all"
+                f"Not assign max_token_output, set: {max_token_output} for 1/8 of max_token_all"
             )
+    else:
+        max_token_output = args.max_token_output
+        print(f"Manually set max_token_output: {max_token_output}")
 
     # Set the max token input
     if not hasattr(args, "max_token_input"):
-        args.max_token_input = int(args.max_token_all - args.max_token_output)
+        max_token_input = int(max_token_all - max_token_output)
         print(
-            f"Not assign max_token_input, set: {args.max_token_input} for max_token_all - max_token_output"
+            f"Not assign max_token_input, set: {max_token_input} for max_token_all - max_token_output"
         )
+    else:
+        max_token_input = args.max_token_input
+        print(f"Manually set max_token_input: {max_token_input}")
+
+    return max_token_all, max_token_input, max_token_output
+
+
+def get_chat_config(args) -> dict:
+    """Build chat_kwargs based on model name and args."""
+
+    model_name = args.model_name.lower()
+
+    # Initialize chat_kwargs
+    kwargs = {}
+
+    # ---- Qwen3 (Earlier version) ----
+    if (
+        model_name.startswith("qwen3")
+        and "thinking" not in model_name
+        and "instruct" not in model_name
+    ):
+        val, is_default = set_default_args(
+            args, "enable_thinking", default=True, valid_set={True, False}
+        )
+        kwargs["enable_thinking"] = val
+        print(
+            f"[Qwen3] {'default' if is_default else 'manually set'} enable_thinking={val}"
+        )
+
+    # ---- gpt-oss ----
+    elif model_name.startswith("gpt-oss"):
+        val, is_default = set_default_args(
+            args,
+            "reasoning_effort",
+            default="medium",
+            valid_set={"low", "medium", "high"},
+            cast=lambda x: str(x).lower(),
+        )
+        kwargs["reasoning_effort"] = val
+        print(
+            f"[gpt-oss] {'default' if is_default else 'manually set'} reasoning_effort={val}"
+        )
+
+    else:
+        # For other models, no special chat_kwargs are needed
+        pass
+
+    return kwargs
 
 
 def load_model(args):
-    # load the config for model and decoding
-    load_config(args)
-
     # load the model and tokenizer
     tokenizer = AutoTokenizer.from_pretrained(
         args.model_path, padding_side="left", trust_remote_code=True

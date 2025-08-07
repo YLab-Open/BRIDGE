@@ -11,8 +11,10 @@
 
 *.log
 
-# dataset_raw/*
-# analysis/*
-# log/
-# result/*
-# performance/*
+dataset_raw
+dict_model_path.json
+
+/analysis/
+/log/
+/result/
+/performance/

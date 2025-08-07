@@ -1,18 +1,25 @@
 # --- Model & inference ---
 inference_mode: vllm # vllm or hf
 
+# --- Mode of the benchmark ---
+# --- Note: train / dev / test
+mode: test
+
 # --- Experiment settings ---
 # --- Note: Each row: [prompt_mode, decoding_strategy, seed]
 # --- decoding_strategy: greedy, sampling
 experiments:            
   - [direct, greedy, 42]
-  - [cot, greedy, 42]
-  - [direct-5-shot, greedy, 42]
+  # - [cot, greedy, 42]
+  # - [direct-5-shot, greedy, 42]
 
 # --- Model settings ---
 # --- Note: For Qwen3, switches between thinking and non-thinking modes. 
 # --- Default is True. Not impacting the inferences of other models.
-enable_thinking: True
+# enable_thinking: False
+# --- Note: For gpt-oss, switches between reasoning_effort modes.
+# --- Default is "medium". Not impacting the inferences of other models.
+reasoning_effort: high # low, medium, high
 
 # --- Batch size ---
 # --- Note: actually only works for "hf" inference mode, as vllm will dynamically adjust the batch size during inference.
