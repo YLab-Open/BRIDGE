@@ -14,19 +14,21 @@
 
 #### 0. Download the BRIDGE Dataset
 
-All fully open-access datasets in BRIDGE are available in [BRIDGE-Open](https://huggingface.co/datasets/YLab-Open/BRIDGE-Open). To ensure the fairness of this leaderboard, we publicly release the following data for each task: Five completed samples serve as few-shot examples, and all testing samples with instructions and input information. Due to privacy and security considerations of clinical data, regulated-access datasets can not be directly published. However, all detailed task descriptions and their corresponding data sources are available in our [BRIDGE paper](https://arxiv.org/abs/2504.19467). Importantly, all 87 datasets have been verified to be either fully open-access or publicly accessible via reasonable request.
+All fully open-access datasets in BRIDGE are available in [BRIDGE-Open](https://huggingface.co/datasets/YLab-Open/BRIDGE-Open). To ensure leaderboard fairness, we release the following data for each task: Five completed samples serve as few-shot examples, and all testing samples with instructions and input information. Due to privacy and security considerations of clinical data, regulated-access datasets can not be directly published. Therefore, all detailed task descriptions and their corresponding data sources are available in our [BRIDGE paper](https://arxiv.org/abs/2504.19467) **Appendix Section 5 BRIDGE Dataset and Task Information**. Importantly, all 87 datasets have been verified to be either fully open-access or publicly accessible via reasonable request.
+
+Additionally, we provide a python script (`dataset_download.py`) to download the dataset from Hugging Face, or you can manually download the dataset from Hugging Face.
 
 #### 1. Configure Your Environment
 
 Install the required packages, mainly including:
 
-python==3.12
+`python==3.12`
 
 if need to run gpt-oss models, please install:
-    vllm==0.10.1+gptoss (details in: [gpt-oss vLLM Usage Guide](https://docs.vllm.ai/projects/recipes/en/latest/OpenAI/GPT-OSS.html#amd))
+    `pip install vllm==0.10.1+gptoss` (details in: [gpt-oss vLLM Usage Guide](https://docs.vllm.ai/projects/recipes/en/latest/OpenAI/GPT-OSS.html#amd))
 
 Or, you can directly install vllm:
-    pip install vllm==0.8.3
+    `pip install vllm==0.8.3`
 
 The `requirements.txt` file includes all the dependencies, which are used to conduct our experiments with H100 GPUs. 
 
