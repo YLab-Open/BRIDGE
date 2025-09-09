@@ -1,5 +1,13 @@
 ## BRIDGE (Benchmarking Large Language Models for Understanding Real-world Clinical Practice Text)
 
+## 📢 Updates
+
+- 🗓️ **2025/09/04**: Updated leaderboard with 8 models! View the [full list of added models](https://huggingface.co/spaces/YLab-Open/BRIDGE-Medical-Leaderboard/blob/main/models-log.md)
+- 🗓️ **2025/07/22**: Updated leaderboard with 9 models! View the [full list of added models](https://huggingface.co/spaces/YLab-Open/BRIDGE-Medical-Leaderboard/blob/main/models-log.md)
+- 🗓️ **2025/06/03**: Updated leaderboard with 21 models! View the [full list of added models](https://huggingface.co/spaces/YLab-Open/BRIDGE-Medical-Leaderboard/blob/main/models-log.md)
+- 🗓️ **2025/04/28**: [BRIDGE Leaderboard](https://huggingface.co/spaces/YLab-Open/BRIDGE-Medical-Leaderboard) V1.0.0 is now live!
+- 🗓️ **2025/04/28**: Our paper [BRIDGE](https://arxiv.org/abs/2504.19467) is now available on arXiv!
+
 ## 📜 Background
 
 **Large Language Models (LLMs)** have demonstrated transformative potential in **healthcare**,  yet concerns remain around their reliability and clinical validity across diverse clinical tasks, specialties, and languages. To support timely and trustworthy evaluation, building upon our [systematic review](https://ai.nejm.org/doi/full/10.1056/AIra2400012) of global clinical text resources, we introduce **[BRIDGE](https://arxiv.org/abs/2504.19467)**, **a multilingual benchmark that comprises 87 real-world clinical text tasks spanning nine languages and more than one million samples**. Furthermore, we construct this leaderboard of LLM in clinical text understanding by systematically evaluating **52 state-of-the-art LLMs** (by 2025/04/29). 
@@ -50,11 +58,6 @@ The `requirements.txt` file includes all the dependencies, which are used to con
 #### 4. Update the Leaderboard
 
 If you would like to submit your model results to [BRIDGE Leaderboard](https://huggingface.co/spaces/YLab-Open/BRIDGE-Medical-Leaderboard) and demonstrate its performance, please send the generated `result` folder to us, and we will update the leaderboard accordingly. The leaderboard will be updated regularly, and we will notify you via email once your results are added.
-
-## 📢 Updates
-
-- 🗓️ **2025/04/28**: BRIDGE Leaderboard V1.0.0 is now live!
-- 🗓️ **2025/04/28**: Our paper [BRIDGE](https://arxiv.org/abs/2504.19467) is now available on arXiv!
 
 ## 🤝 Contributing
 We welcome and greatly value contributions and collaborations from the community!
