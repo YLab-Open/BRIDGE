@@ -11,10 +11,4 @@
 
 *.log
 
-dataset_raw
-dict_model_path.json
-
-/analysis/
-/log/
-/result/
-/performance/
+/result/*

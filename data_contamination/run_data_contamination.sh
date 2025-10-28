@@ -1,27 +1,4 @@
-model_name=Llama-3.1-8B-Instruct
-# # Size: Small
-# "Phi-4"
-# "BioMistral-7B"
-# "Ministral-8B-Instruct-2410"
-# "MMed-Llama-3-8B"
-# # Size: Mid
-# "gemma-2-27b-it"
-# "QwQ-32B-Preview"
-# # Size: Large
-# "Llama-3.1-70B-Instruct"
-# "Llama-3.3-70B-Instruct"
-# "Llama-3.1-Nemotron-70B-Instruct-HF"
-# "meditron-70b"
-# "MeLLaMA-70B-chat"
-# "Llama3-OpenBioLLM-70B"
-# "Llama-3-70B-UltraMedical"
-# "Mistral-Large-Instruct-2411"
-# "Phi-3.5-MoE-instruct"
-# "Qwen2.5-72B-Instruct"
-# "Athene-V2-Chat"
-# "gemma-3-27b-it"
-# "Llama-4-Scout-17B-16E-Instruct"
-# "Mistral-Small-3.1-24B-Instruct-2503"
+model_name=Qwen2.5-72B-Instruct
 
 # -------- GPU VISIBILITY --------
 gpus=4,5,6,7

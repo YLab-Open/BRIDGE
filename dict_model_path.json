@@ -1,0 +1,4 @@
+{  
+    "model": "path/to/your/model",
+    "Qwen2.5-7B-Instruct": "/netapp3/raw_data3/share/llm_public_host/Qwen2.5-7B-Instruct"
+}

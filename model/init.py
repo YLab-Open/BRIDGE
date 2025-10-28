@@ -137,6 +137,41 @@ def get_chat_config(args) -> dict:
     return kwargs
 
 
+def init_model(args):
+    # Get the model path
+    with open(
+        "dict_model_path.json",
+        "r",
+        encoding="utf-8",
+    ) as f:
+        dict_model_path = json.load(f)
+    if args.model_name not in dict_model_path:
+        raise KeyError(f"Model {args.model_name} not found in dict_model_path.json")
+    args.model_path = dict_model_path[args.model_name]
+
+    # set the config for model and decoding
+    args.max_token_all, args.max_token_input, args.max_token_output = get_token_config(
+        args
+    )
+    # Set the process kwargs for apply_chat_template()
+    args.chat_kwargs = get_chat_config(args)
+
+    # Initialize the model and tokenizer
+    tokenizer, model = load_model(args)
+
+    # Add the suffix for models with different thinking mode
+    #  - For earlier Qwen3 models
+    if "enable_thinking" in args.chat_kwargs:
+        args.model_name += (
+            "-Thinking" if args.chat_kwargs["enable_thinking"] else "-Non-Thinking"
+        )
+    #  - For gpt-oss models
+    if "reasoning_effort" in args.chat_kwargs:
+        args.model_name += f"-{args.chat_kwargs['reasoning_effort']}"
+
+    return tokenizer, model
+
+
 def load_model(args):
     # load the model and tokenizer
     tokenizer = AutoTokenizer.from_pretrained(
@@ -150,7 +185,7 @@ def load_model(args):
             model = LLM(
                 model=args.model_path,
                 tensor_parallel_size=len(args.gpus),
-                dtype="bfloat16",
+                # dtype="bfloat16",
                 trust_remote_code=True,
                 max_model_len=args.max_token_all,
                 gpu_memory_utilization=0.95,
@@ -162,7 +197,7 @@ def load_model(args):
             model = LLM(
                 model=args.model_path,
                 tensor_parallel_size=len(args.gpus),
-                dtype="bfloat16",
+                # dtype="bfloat16",
                 max_model_len=args.max_token_all,
                 gpu_memory_utilization=0.95,
                 trust_remote_code=True,

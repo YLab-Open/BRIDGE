@@ -5,7 +5,6 @@ import numpy as np
 from tqdm import tqdm
 from multiprocessing import Pool
 from torch.utils.data import Dataset, DataLoader
-import numpy as np
 
 from .config import (
     get_models_evaluate,
@@ -19,7 +18,7 @@ from util.tool import get_mean_std_ci
 
 
 class GeneralDataset(Dataset):
-    def __init__(self, args, data, tokenizer, example=None):
+    def __init__(self, args, data, tokenizer, example=[]):
         """
         Initialize the dataset for benchmarking.
 

@@ -1,10 +1,10 @@
 import json
 import regex
 import numpy as np
-from multiprocessing import Pool, cpu_count
+from multiprocessing import Pool
 
 # import self-defined modules
-from .dataset import GeneralDataset, GeneralTask, GeneralEvaluation
+from .dataset import GeneralEvaluation
 from .config import (
     get_pred_none_clf,
     get_pred_none_clf_mul_label,

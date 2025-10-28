@@ -46,7 +46,7 @@ def get_truncate_text(text, tokenizer, max_tokens):
     return text
 
 
-def num_tokens_from_messages(messages, tokenizer, chat_kwargs=None):
+def num_tokens_from_messages(messages, tokenizer, chat_kwargs={}):
     """Return the number of tokens used by a list of messages."""
     token_template = tokenizer.apply_chat_template(
         messages, tokenize=True, add_generation_prompt=True, **chat_kwargs
@@ -164,7 +164,7 @@ def format_chat(
     times_word_token=7,
     num_token_reserve=10,
     examples=[],
-    chat_kwargs=None,
+    chat_kwargs={},
 ):
     """
     Format the input for different models based on the prompt mode.
@@ -254,7 +254,7 @@ def get_formatted_chat(
     num_token_reserve=10,
     examples=[],
     flag_openai=False,
-    chat_kwargs=None,
+    chat_kwargs={},
 ):
     # Step 1: Rough token estimation (not exact, but a starting point)
     initial_estimated_token_count = estimate_token_rough(
@@ -336,7 +336,7 @@ def format_chat_general(
     times_word_token=7,
     num_token_reserve=10,
     examples=[],
-    chat_kwargs=None,
+    chat_kwargs={},
 ):
     """
     Format the input for general models with optional examples and length truncation.
@@ -623,8 +623,8 @@ def format_chat_mellama(
 
     Returns:
         Example_ids: A list of example IDs used in the formatted input.
-        formatted_input: A formatted input string for Mellama.
-        formatted_input: A formatted input string for Mellama.
+        formatted_input: A formatted input string for Me-LLaMA.
+        formatted_input: A formatted input string for Me-LLaMA.
     """
 
     token_rough = estimate_token_rough(
@@ -715,7 +715,7 @@ def get_formatted_chat_gemini(
     examples=[],
 ):
     """
-    Format input for Gwmini models, supporting examples and length truncation.
+    Format input for Gemini models, supporting examples and length truncation.
     Unlike general format, this format integrates the system prompt into the user's role content and follows the Gemini style
     and prefixes user inputs with "Input:\n".
 
@@ -943,7 +943,7 @@ def get_formatted_chat_gemini(
     examples=[],
 ):
     """
-    Format input for Gwmini models, supporting examples and length truncation.
+    Format input for Gemini models, supporting examples and length truncation.
     Unlike general format, this format integrates the system prompt into the user's role content and follows the Gemini style
     and prefixes user inputs with "Input:\n".
 

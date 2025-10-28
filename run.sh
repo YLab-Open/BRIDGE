@@ -5,7 +5,7 @@ export TOKENIZERS_PARALLELISM=False
 CONFIG_FILE="BRIDGE.yaml"
 
 # -------- Model Name --------
-model_name=gpt-oss-20b
+model_name=Qwen2.5-7B-Instruct
 # Supported models:
 # Baichuan-M1-14B-Instruct
 # DeepSeek-R1
@@ -68,7 +68,7 @@ model_name=gpt-oss-20b
 # gpt-oss-120b
 
 # -------- GPU VISIBILITY --------
-gpus=4
+gpus=0,1,2,3
 # 0,1,2,3,4,5,6,7
 export CUDA_VISIBLE_DEVICES=$gpus
 

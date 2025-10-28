@@ -1,0 +1,32 @@
+[
+  {
+    "task": "BrainMRI-AIS",
+    "language": "en",
+    "task type": "Text Classification",
+    "id": 1755,
+    "split": "test",
+    "instruction": "Given a brain Magnetic Resonance Imaging (MRI) radiology report, determine whether the patient has acute ischemic stroke (AIS).\nReturn your answer in the following format. DO NOT GIVE ANY EXPLANATION:\nAIS: label\nThe optional list for \"label\" is [\"Yes\", \"No\"].",
+    "input": "Diffuse brain atrophy\r\nNo diffusion restriction\r\nFocal left parietal subcortical calcification\r\n: non- specific calcified granuloma, most likely\r\n rule out) old hemorrhage\r\nmagnetic resonance angiography: No gross abnormal finding.",
+    "output": "AIS: No"
+  },
+  {
+    "task": "BrainMRI-AIS",
+    "language": "en",
+    "task type": "Text Classification",
+    "id": 1858,
+    "split": "test",
+    "instruction": "Given a brain Magnetic Resonance Imaging (MRI) radiology report, determine whether the patient has acute ischemic stroke (AIS).\nReturn your answer in the following format. DO NOT GIVE ANY EXPLANATION:\nAIS: label\nThe optional list for \"label\" is [\"Yes\", \"No\"].",
+    "input": "1. Left parietal depressed skull fracture.\r\n2. Diffuse left cerebral subdural hygroma.\r\n3. Multiple enhanced nodules and both cerebellar hemispheres, cerebellar vermis, both thalamus and both cerebral corticomedullaryy junctions.\r\n- Associated with surrounding edema, internal hemorrhage.\r\n- Multiple hemorrhagic metastasis.\r\n4. Chronic both otomastoiditis.\r\n5. Scant left parietal subdural hemorrhage.\r\n6. Multiple old small infarcts in both cerebral deep white matter.\r\n7. Diffuse hydrocephalus.\r\n8. No diffusion restriction.\r\n9. Venous malformation in left parietal subcortical white matter.\r\n10. Focal stenosis of left proximal cervical internal carotid artery and right vertebral ostium.\r\n11. Dolichosis of vertebro-basilar artery.\r\n12. Steno-occlusive disease of left cavernous internal carotid artery.",
+    "output": "AIS: No"
+  },
+  {
+    "task": "BrainMRI-AIS",
+    "language": "en",
+    "task type": "Text Classification",
+    "id": 553,
+    "split": "test",
+    "instruction": "Given a brain Magnetic Resonance Imaging (MRI) radiology report, determine whether the patient has acute ischemic stroke (AIS).\nReturn your answer in the following format. DO NOT GIVE ANY EXPLANATION:\nAIS: label\nThe optional list for \"label\" is [\"Yes\", \"No\"].",
+    "input": "Unremarkable finding of brain parenchyma and cerebrospinal fluid space.\r\nmagnetic resonance angiography: No gross abnormal finding.",
+    "output": "AIS: No"
+  }
+]

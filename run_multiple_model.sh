@@ -47,21 +47,21 @@ models=(
     # "Phi-4"
     # "Qwen2.5-1.5B-Instruct"
     # "Qwen2.5-3B-Instruct"
-    # "Qwen2.5-7B-Instruct"
+    "Qwen2.5-7B-Instruct"
     # "Qwen2.5-72B-Instruct"
     # "QwQ-32B-Preview"
     # "QWQ-32B"
     # "Athene-V2-Chat"
     # "Yi-1.5-9B-Chat-16K"
     # "Yi-1.5-34B-Chat-16K"
-    "gpt-oss-20b"
+    # "gpt-oss-20b"
     # "gpt-oss-120b"
 )
 
 # --- GPU VISIBILITY ---
-gpus=4
-export CUDA_VISIBLE_DEVICES=$gpus
+gpus=0,1,2,3
 # 0,1,2,3,4,5,6,7
+export CUDA_VISIBLE_DEVICES=$gpus
 
 # nohup bash run_multiple_model.sh > log/run_multiple_model.log 2>&1 &
 

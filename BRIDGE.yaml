@@ -44,12 +44,12 @@ max_token_input: 99328
 # --- Note: The task file should be in the folder of "dataset_raw" and end with "SFT.json".
 # --- Note: The result will be saved in the folder of result/task_name/model_name/{task_name}_{inference_mode}_{prompt_mode}_{decoding_strategy}_{seed}}.json
 tasks:
-  - ADE-Drug dosage
+  # - ADE-Drug dosage
   # - ADE-Extraction
   # - ADE-Identification
   # - BARR2
   # - BRONCO150-NER&Status
-  # - BrainMRI-AIS
+  - BrainMRI-AIS
   # - Brateca-Hospitalization
   # - Brateca-Mortality
   # - C-EMRS

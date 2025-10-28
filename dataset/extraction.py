@@ -2,7 +2,7 @@ import regex
 import numpy as np
 
 # import self-defined modules
-from .dataset import GeneralDataset, GeneralTask, GeneralEvaluation
+from .dataset import GeneralEvaluation
 from .config import get_pred_none_ext
 from .process import process_pred, extract_pred
 from metric.extraction import (

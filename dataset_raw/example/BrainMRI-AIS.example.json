@@ -1,0 +1,22 @@
+[
+  {
+    "task": "BrainMRI-AIS",
+    "language": "en",
+    "task type": "Text Classification",
+    "id": 2041,
+    "split": "train",
+    "instruction": "Given a brain Magnetic Resonance Imaging (MRI) radiology report, determine whether the patient has acute ischemic stroke (AIS).\nReturn your answer in the following format. DO NOT GIVE ANY EXPLANATION:\nAIS: label\nThe optional list for \"label\" is [\"Yes\", \"No\"].",
+    "input": "No diffusion restriction\r\n\r\nMultiple old small infarcts in both cerebral periventricular deep white matter.\r\nmagnetic resonance angiography: No gross abnormal finding.",
+    "output": "AIS: No"
+  },
+  {
+    "task": "BrainMRI-AIS",
+    "language": "en",
+    "task type": "Text Classification",
+    "id": 1661,
+    "split": "train",
+    "instruction": "Given a brain Magnetic Resonance Imaging (MRI) radiology report, determine whether the patient has acute ischemic stroke (AIS).\nReturn your answer in the following format. DO NOT GIVE ANY EXPLANATION:\nAIS: label\nThe optional list for \"label\" is [\"Yes\", \"No\"].",
+    "input": "Unremarkable finding of brain parenchyma and cerebrospinal fluid space.\r\nmagnetic resonance angiography: No gross abnormal finding.\r\n\r\n",
+    "output": "AIS: No"
+  }
+]

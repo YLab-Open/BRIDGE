@@ -2,15 +2,15 @@
 
 ## 📢 Updates
 
-- 🗓️ **2025/09/04**: Updated leaderboard with 8 models! View the [full list of added models](https://huggingface.co/spaces/YLab-Open/BRIDGE-Medical-Leaderboard/blob/main/models-log.md)
-- 🗓️ **2025/07/22**: Updated leaderboard with 9 models! View the [full list of added models](https://huggingface.co/spaces/YLab-Open/BRIDGE-Medical-Leaderboard/blob/main/models-log.md)
-- 🗓️ **2025/06/03**: Updated leaderboard with 21 models! View the [full list of added models](https://huggingface.co/spaces/YLab-Open/BRIDGE-Medical-Leaderboard/blob/main/models-log.md)
+- 🗓️ **2025/09/04**: Updated leaderboard with 8 models (93 models in total)! View the [full list of added models](https://huggingface.co/spaces/YLab-Open/BRIDGE-Medical-Leaderboard/blob/main/models-log.md)
+- 🗓️ **2025/07/22**: Updated leaderboard with 9 models (85 models in total)! View the [full list of added models](https://huggingface.co/spaces/YLab-Open/BRIDGE-Medical-Leaderboard/blob/main/models-log.md)
+- 🗓️ **2025/06/03**: Updated leaderboard with 21 models (76 models in total)! View the [full list of added models](https://huggingface.co/spaces/YLab-Open/BRIDGE-Medical-Leaderboard/blob/main/models-log.md)
 - 🗓️ **2025/04/28**: [BRIDGE Leaderboard](https://huggingface.co/spaces/YLab-Open/BRIDGE-Medical-Leaderboard) V1.0.0 is now live!
 - 🗓️ **2025/04/28**: Our paper [BRIDGE](https://arxiv.org/abs/2504.19467) is now available on arXiv!
 
 ## 📜 Background
 
-**Large Language Models (LLMs)** have demonstrated transformative potential in **healthcare**,  yet concerns remain around their reliability and clinical validity across diverse clinical tasks, specialties, and languages. To support timely and trustworthy evaluation, building upon our [systematic review](https://ai.nejm.org/doi/full/10.1056/AIra2400012) of global clinical text resources, we introduce **[BRIDGE](https://arxiv.org/abs/2504.19467)**, **a multilingual benchmark that comprises 87 real-world clinical text tasks spanning nine languages and more than one million samples**. Furthermore, we construct this leaderboard of LLM in clinical text understanding by systematically evaluating **52 state-of-the-art LLMs** (by 2025/04/29). 
+**Large Language Models (LLMs)** have demonstrated transformative potential in **healthcare**,  yet concerns remain around their reliability and clinical validity across diverse clinical tasks, specialties, and languages. To support timely and trustworthy evaluation, building upon our [systematic review](https://ai.nejm.org/doi/full/10.1056/AIra2400012) of global clinical text resources, we introduce **[BRIDGE](https://arxiv.org/abs/2504.19467)**, **a multilingual benchmark that comprises 87 real-world clinical text tasks spanning nine languages and more than one million samples**. Furthermore, we construct this leaderboard of LLM in clinical text understanding by systematically evaluating **95 state-of-the-art LLMs** (by 2025/10/27). 
 
 **Key Features**: Real-world Clinical Text, 9 Languages, 9 Task types, 14 Clinical specialties, 7 Clinical document types, 20 Clinical applications covering 6 clinical stages of patient care. 
 

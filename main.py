@@ -9,7 +9,7 @@ from pathlib import Path
 from util.tool import init_logger
 from dataset.dataset import GeneralTask
 from model.init import seed_everything
-from model.init import get_token_config, get_chat_config, load_model
+from model.init import init_model
 from model.inference import run_hf, run_vllm
 
 
@@ -21,39 +21,26 @@ def parse_gpu_list(gpu_str: str) -> list[int]:
         raise ValueError(f"Invalid --gpus format: {gpu_str}") from e
 
 
-def init_model(args):
-    # Get the model path
-    with open(
-        "dict_model_path.json",
-        "r",
-        encoding="utf-8",
-    ) as f:
-        dict_model_path = json.load(f)
-    if args.model_name not in dict_model_path:
-        raise KeyError(f"Model {args.model_name} not found in dict_model_path.json")
-    args.model_path = dict_model_path[args.model_name]
-
-    # set the config for model and decoding
-    args.max_token_all, args.max_token_input, args.max_token_output = get_token_config(
-        args
+def log_task(args, logger, task_name, task, str_time_start_task):
+    """Log the task and experiment information."""
+    # Log model and task information
+    logger.info(f"Model: {args.model_name}: {args.model_path}")
+    logger.info(f"Task: {task_name}")
+    logger.info(
+        f"Size: train={len(task.dataset_train)}, dev={len(task.dataset_dev)}, "
+        f"test={len(task.dataset_test)}"
     )
-    # Set the process kwargs for apply_chat_template()
-    args.chat_kwargs = get_chat_config(args)
 
-    # Initialize the model and tokenizer
-    tokenizer, model = load_model(args)
+    # Log the experiment parameters
+    logger.info("\n" + "-" * 30 + "\n")
+    logger.info("Experiment parameters:")
+    for key, value in args.__dict__.items():
+        if key not in ["tasks", "temperature", "top_p", "top_k"]:
+            logger.info(f" - {key}: {value}")
+    logger.info("\n" + "-" * 30 + "\n")
 
-    # Add the suffix for models with different thinking mode
-    #  - For earlier Qwen3 models
-    if "enable_thinking" in args.chat_kwargs:
-        args.model_name += (
-            "-Thinking" if args.chat_kwargs["enable_thinking"] else "-Non-Thinking"
-        )
-    #  - For gpt-oss models
-    if "reasoning_effort" in args.chat_kwargs:
-        args.model_name += f"-{args.chat_kwargs['reasoning_effort']}"
-
-    return tokenizer, model
+    logger.info(f"Start on: {str_time_start_task}")
+    logger.info("\n" + "=" * 50 + "\n")
 
 
 def save_result(args, logger, list_dict_data, list_response, save_input=True):
@@ -167,24 +154,8 @@ if __name__ == "__main__":
         )
         logger = init_logger(args.path_file_log)
 
-        # Record data and model
-        logger.info(f"Model: {args.model_name}: {args.model_path}")
-        logger.info(f"Task: {task_name}")
-        logger.info(
-            f"Size: train={len(task.dataset_train)}, dev={len(task.dataset_dev)}, "
-            f"test={len(task.dataset_test)}"
-        )
-
-        # Log the experiment parameters
-        logger.info("\n" + "-" * 30 + "\n")
-        logger.info("Experiment parameters:")
-        for key, value in args.__dict__.items():
-            if key not in ["tasks", "temperature", "top_p", "top_k"]:
-                logger.info(f" - {key}: {value}")
-        logger.info("\n" + "-" * 30 + "\n")
-
-        logger.info(f"Start on: {str_time_start_task}")
-        logger.info("\n" + "=" * 50 + "\n")
+        # Log the task and experiment information
+        log_task(args, logger, task_name, task, str_time_start_task)
 
         # For different experiments, such as inference strategy or decoding parameter
         for idx_exp, (prompt_mode, decoding_strategy, seed) in enumerate(
