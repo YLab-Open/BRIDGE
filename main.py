@@ -82,6 +82,12 @@ if __name__ == "__main__":
         help="The name of the LLM model, only one model.",
     )
     parser.add_argument(
+        "--model_file",
+        type=str,
+        default="dict_model_path.json",
+        help="Path to a JSON file containing model name to model path mapping.",
+    )
+    parser.add_argument(
         "--gpus",
         type=str,
         default="0,1",
