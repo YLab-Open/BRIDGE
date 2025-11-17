@@ -140,7 +140,7 @@ def get_chat_config(args) -> dict:
 def init_model(args):
     # Get the model path
     with open(
-        "dict_model_path.json",
+        args.model_file,
         "r",
         encoding="utf-8",
     ) as f:
@@ -178,6 +178,11 @@ def load_model(args):
         args.model_path, padding_side="left", trust_remote_code=True
     )
     if args.inference_mode == "vllm":
+        if not hasattr(args, "gpu_memory_util"):
+            args.gpu_memory_util = 0.95
+            print("Not assign gpu_memory_util, set to 0.95")
+        else:
+            print(f"Manually set gpu_memory_util: {args.gpu_memory_util}")
         if (
             "mistral" in args.model_name.lower()
             and "biomistral" not in args.model_name.lower()
@@ -186,9 +191,8 @@ def load_model(args):
                 model=args.model_path,
                 tensor_parallel_size=len(args.gpus),
                 # dtype="bfloat16",
-                trust_remote_code=True,
                 max_model_len=args.max_token_all,
-                gpu_memory_utilization=0.95,
+                gpu_memory_utilization=args.gpu_memory_util,
                 tokenizer_mode="mistral",
                 load_format="mistral",
                 config_format="mistral",
@@ -199,8 +203,7 @@ def load_model(args):
                 tensor_parallel_size=len(args.gpus),
                 # dtype="bfloat16",
                 max_model_len=args.max_token_all,
-                gpu_memory_utilization=0.95,
-                trust_remote_code=True,
+                gpu_memory_utilization=args.gpu_memory_util,
             )
     else:
         model = AutoModelForCausalLM.from_pretrained(

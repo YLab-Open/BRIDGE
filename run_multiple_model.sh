@@ -3,6 +3,7 @@ export TOKENIZERS_PARALLELISM=False
 
 # --- Path to YAML config ---
 CONFIG_FILE="BRIDGE.yaml"
+MODEL_FILE="dict_model_path.json"
 
 # --- Model name ---
 models=(
@@ -75,5 +76,6 @@ for model_name in "${models[@]}"; do
     --model_name "$model_name" \
     --gpus "$gpus" \
     --config "$CONFIG_FILE" \
+    --model_file "$MODEL_FILE" \
     > log/${model_name}.${now}.log 2>&1
 done

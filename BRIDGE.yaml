@@ -30,6 +30,7 @@ batch_size: 32
 temperature: 0.6
 top_p: 0.95
 top_k: 20
+gpu_memory_util: 0.95
 
 # --- Length of the input and output:
 max_token_all: 102400
