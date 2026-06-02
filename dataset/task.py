@@ -6,6 +6,7 @@ from typing import Union
 
 
 def get_type_task(task: str) -> str:
+    """Return the task family for a task adapter instance."""
     CLS_CLF = Union[
         Task_clf_binary, Task_clf_mul_class, Task_clf_mul_label, Task_clf_mul_question
     ]
@@ -25,7 +26,7 @@ def get_type_task(task: str) -> str:
 
 
 def get_cls_for_clf():
-    # Classification
+    """Return the classification task registry."""
     return {
         "ADE-Identification": Task_clf_ADE_ADE_identification,
         "BrainMRI-AIS": Task_clf_Brain_MRI_AIS,
@@ -66,7 +67,7 @@ def get_cls_for_clf():
 
 
 def get_cls_for_ext():
-    # Extraction
+    """Return the extraction task registry."""
     return {
         "ADE-Extraction": Task_ext_ADE_ADE_relation,
         "ADE-Drug dosage": Task_ext_ADE_Drug_dosage,
@@ -114,7 +115,7 @@ def get_cls_for_ext():
 
 
 def get_cls_for_gen():
-    # Generation
+    """Return the generation task registry."""
     return {
         "cMedQA": Task_gen_cMedQA,
         "EHRQA-QA": Task_gen_EHRQA_qa,
@@ -130,6 +131,7 @@ def get_cls_for_gen():
 
 
 def get_cls_for_all_tasks():
+    """Return both grouped and flattened task registries."""
     dict_cls_for_clf = get_cls_for_clf()
     dict_cls_for_ext = get_cls_for_ext()
     dict_cls_for_gen = get_cls_for_gen()

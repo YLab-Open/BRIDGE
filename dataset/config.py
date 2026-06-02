@@ -2,10 +2,18 @@ import numpy as np
 
 list_str_templates_direct = [
     "Return your answer in the following format. DO NOT GIVE ANY EXPLANATION:",
+    "Provide only the final answer in the format below. Do not include any reasoning or explanation:",
+    "Output your answer strictly using the following format. Explanations are not allowed:",
+    "Respond using the exact format specified. Do not add any additional commentary:",
+    "Return the final answer exactly as outlined below without providing any justification or reasoning:",
 ]
 
 list_str_templates_cot = [
     "Solve it in a step-by-step fashion, return your answer in the following format, PROVIDE DETAILED ANALYSIS BEFORE THE RESULT:",
+    "Let's use step by step inductive reasoning, given the clinical nature of the task. Return your analysis and result in the following format:",
+    "Determine the answer to the task given the clinical context in a step by step fashion. Give your analysis and final result in the format below:",
+    "Let's break the task into multiple steps and reason step by step as a clinician would. Then, provide your analysis and result in the specified format:",
+    "Reason through this task step by step like a clinical expert, then return your analysis and final result in the given format:",
 ]
 str_format_cot = """\nAnalysis:
 ...
@@ -20,7 +28,7 @@ assert len(list_str_templates_direct) == len(
 ), "The number of Direct templates and CoT templates should be the same."
 
 
-def get_tempalte_direct():
+def get_template_direct():
     """
     Get the template of Direct
     Returns:
@@ -29,7 +37,7 @@ def get_tempalte_direct():
     return list_str_templates_direct
 
 
-def get_tempalte_cot():
+def get_template_cot():
     """
     Get the template of CoT
     Returns:
@@ -127,6 +135,7 @@ def get_instruction_direct_from_cot(instruction):
 
 
 def extract_cot_pred(str_response):
+    """Extract the final `Result:` section from a CoT response when present."""
     list_cot_split_token = ["Result:"]
     for cot_split_token in list_cot_split_token:
         cot_split_token = cot_split_token.lower()
@@ -137,22 +146,30 @@ def extract_cot_pred(str_response):
 
 
 def get_metrics_clf():
+    """Return default metrics printed for multi-class classification tasks."""
     return ["accuracy", "f1_macro", "f1_micro", "num_failed_ratio"]
 
+def get_metrics_clf_binary():
+    """Return default metrics printed for binary classification tasks."""
+    return ["accuracy", "f1_binary", "num_failed_ratio"]
 
 def get_metrics_gen():
+    """Return default metrics printed for generation tasks."""
     return ["bleu", "rouge", "bertscore", "num_failed_ratio"]
 
 
 def get_metrics_ext():
+    """Return default metrics printed for extraction tasks."""
     return ["f1_subject", "f1_event", "num_failed_ratio"]
 
 
 def get_metrics_ext_qa():
+    """Return default metrics printed for QA-style extraction tasks."""
     return ["exact_match", "overlap_match"]
 
 
 def get_pred_none_clf(list_pred, list_label):
+    """Replace invalid single-label predictions with seeded random valid labels."""
     # count the number of invalid response
     num_failed = sum([1 for pred in list_pred if pred == -1])
     # get the valid labels
@@ -166,6 +183,7 @@ def get_pred_none_clf(list_pred, list_label):
 
 
 def get_pred_none_clf_mul_label(list_list_pred, list_list_label):
+    """Replace invalid multi-label predictions with one seeded random valid label."""
     # count the number of invalid response
     num_failed = sum([1 for pred in list_list_pred if -1 in pred])
     # get the valid labels
@@ -182,6 +200,7 @@ def get_pred_none_clf_mul_label(list_list_pred, list_list_label):
 
 
 def get_pred_none_clf_mul_question(list_list_pred, list_list_label):
+    """Replace invalid per-question predictions with seeded random valid labels."""
     # count the number of invalid response
     num_failed = sum([1 for list_pred in list_list_pred if -1 in list_pred])
     num_question = len(list_list_label[0])
@@ -204,6 +223,7 @@ def get_pred_none_clf_mul_question(list_list_pred, list_list_label):
 
 
 def get_pred_none_ext(list_pred):
+    """Replace invalid extraction predictions with empty extraction lists."""
     # return the empty list
     num_failed = sum([1 for pred in list_pred if -1 in pred])
     list_pred = [[] if -1 in pred else pred for pred in list_pred]
@@ -212,6 +232,7 @@ def get_pred_none_ext(list_pred):
 
 
 def get_pred_none_gen(list_pred):
+    """Replace invalid generation predictions with empty strings."""
     # return the empty string
     num_failed = sum([1 for pred in list_pred if pred == -1])
     list_pred = ["" if pred == -1 else pred for pred in list_pred]
@@ -220,6 +241,7 @@ def get_pred_none_gen(list_pred):
 
 
 def get_pred_none_gen_qa_mul(list_list_pred):
+    """Replace invalid multi-answer generation predictions with empty strings."""
     # return the empty string
     num_failed = sum([1 for list_pred in list_list_pred if -1 in list_pred])
     list_list_pred = [
@@ -231,7 +253,8 @@ def get_pred_none_gen_qa_mul(list_list_pred):
 
 
 def get_models_evaluate():
-    list_model = list_model = [
+    """Return the preferred model display order for leaderboard-style summaries."""
+    list_model = [
         "Baichuan-M1-14B-Instruct",
         "DeepSeek-R1",
         "DeepSeek-R1-Distill-Llama-8B",

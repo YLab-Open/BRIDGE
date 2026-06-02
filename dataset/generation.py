@@ -14,19 +14,29 @@ class Task_gen(GeneralEvaluation):
     """
 
     def __init__(self, args, task):
+        """Initialize generation task metadata and optional reference handling."""
         super().__init__(args, task)
         # check if the task has multiple ground truth labels
+        self.gen_prefix = None
         if "output_list" in self.dataset_test[0]:
             print("Notice: this task has multiple reference labels")
 
     def get_label(self, list_dict_data, prompt_mode="direct"):
+        """Parse gold generation references for all result records."""
         list_label = []
         for dict_data in list_dict_data:
             if "output_list" not in dict_data:
-                label = dict_data["output"]
+                label = (
+                    dict_data["output"].split(self.gen_prefix)[-1]
+                    if self.gen_prefix
+                    else dict_data["output"]
+                )
                 label = process_pred(label, flag_lower=True, flag_punc_to_en=True)
             else:
-                label = dict_data["output_list"]
+                label = [
+                    l.split(self.gen_prefix)[-1] if self.gen_prefix else l
+                    for l in dict_data["output_list"]
+                ]
                 label = [
                     process_pred(l, flag_lower=True, flag_punc_to_en=True)
                     for l in label
@@ -36,9 +46,11 @@ class Task_gen(GeneralEvaluation):
         return list_label
 
     def get_pred_none(self, list_pred, list_label):
+        """Replace invalid generation predictions with empty strings."""
         return get_pred_none_gen(list_pred)
 
     def get_pred(self, list_dict_data, prompt_mode="direct"):
+        """Normalize model outputs for generation metrics."""
         list_pred = []
         for dict_data in list_dict_data:
             response = process_pred(
@@ -53,6 +65,7 @@ class Task_gen(GeneralEvaluation):
         return list_pred
 
     def get_performance(self, list_pred, list_label):
+        """Compute generation metrics and per-sample metric details."""
         # generation
         dict_performance, dict_performance_sample = calc_metrics_gen(
             list_pred=list_pred,
@@ -99,6 +112,7 @@ class Task_gen_extract(Task_gen):
     """
 
     def __init__(self, args, task):
+        """Initialize short-answer extraction patterns."""
         super().__init__(args, task)
 
         # Define the regex pattern for the entity
@@ -110,6 +124,7 @@ class Task_gen_extract(Task_gen):
         ]
 
     def get_label(self, list_dict_data, prompt_mode="direct"):
+        """Parse gold short-answer strings."""
         list_answer = []
         for dict_data in list_dict_data:
             line = process_pred(dict_data["output"]).strip()
@@ -119,10 +134,12 @@ class Task_gen_extract(Task_gen):
         return list_answer
 
     def get_pred_none(self, list_pred, list_label):
+        """Replace invalid short-answer predictions with empty strings."""
         list_pred = ["" if pred == -1 else pred for pred in list_pred]
         return list_pred
 
     def get_pred(self, list_dict_data, prompt_mode="direct"):
+        """Parse predicted short-answer strings."""
         list_pred = []
         for idx_data, dict_data in enumerate(list_dict_data):
             if dict_data["pred"].strip() != "":
@@ -147,7 +164,10 @@ class Task_gen_extract(Task_gen):
 
 
 class Task_gen_extract_mul(Task_gen):
+    """Generation task with multiple short-answer evidence fields per sample."""
+
     def __init__(self, args, task):
+        """Initialize multi-question evidence extraction patterns."""
         super().__init__(args, task)
 
         self.sep_event = "\n"
@@ -174,6 +194,7 @@ class Task_gen_extract_mul(Task_gen):
         ]
 
     def get_label(self, list_dict_data, prompt_mode="direct"):
+        """Parse gold answers for each configured question."""
         list_list_answer = []
         num_question = len(self.list_question_pattern)
         for dict_data in list_dict_data:
@@ -193,9 +214,11 @@ class Task_gen_extract_mul(Task_gen):
         return list_list_answer
 
     def get_pred_none(self, list_pred, list_label):
+        """Replace invalid multi-answer predictions with empty strings."""
         return get_pred_none_gen_qa_mul(list_pred)
 
     def get_pred(self, list_dict_data, prompt_mode="direct"):
+        """Parse predicted answers for each configured question."""
         list_list_pred = []
         num_question = len(self.list_question_pattern)
         for idx_data, dict_data in enumerate(list_dict_data):
@@ -230,6 +253,7 @@ class Task_gen_extract_mul(Task_gen):
         return list_list_pred
 
     def get_performance(self, list_pred, list_label):
+        """Compute and average generation metrics across questions."""
         # average the performance for all questions
         dict_question_performance = {}
         dict_question_metric_sample = {}

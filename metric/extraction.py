@@ -214,7 +214,7 @@ def calc_metrics_ext(list_pred, list_label, list_field_subject=["entity"]):
 
 def calc_metrics_ext_qa(list_pred, list_label, language="en"):
     """
-    Evaluate the performance of QA tasks, which extract the relevant information from the orginal text.
+    Evaluate the performance of QA tasks, which extract the relevant information from the original text.
 
     Parameters:
     list_pred (list of list of string prediction): Predicted results for each sample.
@@ -223,7 +223,7 @@ def calc_metrics_ext_qa(list_pred, list_label, language="en"):
     Returns:
     dict: A dictionary containing:
         - overlap_match: the percentage of the overlap between the prediction and the answer
-        - exact_match: the percentage of the answer is exatly contained in the prediction
+        - exact_match: the percentage of the answer is exactly contained in the prediction
 
     """
     # Initialize counters for metrics
@@ -285,7 +285,7 @@ def print_metrics_ext(
         list_metrics = get_metrics_ext()
 
     str_metric = ""
-    str_missing_output = "Mising model:\n\t"
+    str_missing_output = "Missing model:\n\t"
     for model in list_model:
         if model in dict_model_metrics:
             for metric in list_metrics:
@@ -326,7 +326,7 @@ def print_metrics_ext_qa(
         list_metrics = get_metrics_ext_qa()
 
     str_metric = ""
-    str_missing_output = "Mising model:\n\t"
+    str_missing_output = "Missing model:\n\t"
     for model in list_model:
         if model in dict_model_metrics:
             for metric in list_metrics:

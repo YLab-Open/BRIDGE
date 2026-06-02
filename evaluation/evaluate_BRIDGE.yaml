@@ -1,0 +1,42 @@
+# Evaluation config for the full BRIDGE benchmark.
+#
+# This file is independent from the inference config `configs/BRIDGE.yaml`.
+# Run with:
+#   python -m evaluation.bridge
+
+dir_dataset:
+  - dataset_raw
+
+# Result root(s). A string, comma-separated string, or YAML list is supported.
+# Evaluation searches every configured result root.
+dir_result:
+  - result
+  # - result_gpt_oss
+dir_performance: performance
+
+# Use "all" to evaluate every model folder found under result/<task>/.
+# Or replace with an explicit list:
+# models:
+#   - model_a
+#   - model_b
+models: all
+
+prompt_modes:
+  - direct
+
+# Supported task types: clf, ext, gen.
+task_types:
+  - clf
+  - ext
+  - gen
+
+# null means all registered tasks for the selected task_types.
+# To evaluate a subset:
+# tasks:
+#   - TaskName
+tasks: null
+
+bootstrap: 1000
+seed: 42
+sample_eval_index: 0
+print_summary: true

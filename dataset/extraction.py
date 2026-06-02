@@ -17,6 +17,7 @@ class Task_ext(GeneralEvaluation):
     """
 
     def __init__(self, args, task):
+        """Initialize extraction separators, subject fields, and regex patterns."""
         super().__init__(args, task)
 
         self.sep_event = "\n"
@@ -33,6 +34,7 @@ class Task_ext(GeneralEvaluation):
         ]
 
     def get_label(self, list_dict_data, prompt_mode="direct"):
+        """Parse gold extraction records into lists of entity dictionaries."""
         list_list_dict_entity = []
         for dict_data in list_dict_data:
             list_dict_entity = []
@@ -60,9 +62,11 @@ class Task_ext(GeneralEvaluation):
         return list_list_dict_entity
 
     def get_pred_none(self, list_pred, list_label):
+        """Replace invalid extraction predictions with empty lists."""
         return get_pred_none_ext(list_pred)
 
     def get_pred(self, list_dict_data, prompt_mode="direct"):
+        """Parse model outputs into extraction record dictionaries."""
         list_list_dict_entity = []
         for idx_data, dict_data in enumerate(list_dict_data):
             list_dict_entity = []
@@ -117,6 +121,7 @@ class Task_ext(GeneralEvaluation):
         return list_list_dict_entity
 
     def get_performance(self, list_pred, list_label):
+        """Compute extraction metrics and per-sample metric details."""
         # extraction task
         # list_pred, list_label: list of list of dict, each dict contains the entity field and one or more attribute fields
         dict_performance, dict_performance_sample = calc_metrics_ext(
@@ -760,7 +765,7 @@ class Task_ext_MIE(Task_ext):
         self.list_field_feature = ["type", "status"]
 
         self.list_pattern = [
-            # entity: 胸痛, type: 症状, status: 病人-阳性;
+            # Example format: entity: <entity>, type: <type>, status: <status>;
             r"entity: (.+), type: (.+), status: (.+);",
             r".*:\s*(.+),\s*.*:\s*(.+),\s*.*:\s*([^;]+)",
             r"(.+):(.+),([^;]+)",
@@ -786,7 +791,7 @@ class Task_ext_CHIP_MDCFNPC(Task_ext):
         self.list_field_subject = ["findings"]
         self.list_field_feature = ["status"]
         self.list_pattern = [
-            # findings: 吐, status: 阳性;
+            # Example format: findings: <finding>, status: <status>;
             r"findings: (.+), status: (.+);",
             r".*:\s*(.+),\s*.*:\s*([^;]+)",
             r"(.+):([^;]+)",
@@ -802,7 +807,7 @@ class Task_ext_IMCS_V2_SR(Task_ext):
         self.list_field_subject = ["symptom"]
         self.list_field_feature = ["status"]
         self.list_pattern = [
-            # symptom: 发热, status: negative;
+            # Example format: symptom: <symptom>, status: negative;
             r"symptom: (.+), status: (.+);",
             r".*:\s*(.+),\s*.*:\s*([^;]+)",
             r"(.+):([^;]+)",
@@ -936,8 +941,22 @@ class Task_ext_CHIP_CDEE(Task_ext):
         self.list_field_subject = ["subject"]
         self.list_field_feature = ["description", "location", "status"]
         self.list_pattern = [
-            # Subject: 结节, Description: [], Location: [右肺门], Status: 肯定;
+            # Example format: subject, description, location, and status fields.
             r"subject: (.+), description: \[(.*)\], location: \[(.*)\], status: (.*);",
             r".*:(.+),\s*.*:\s*\[(.*)\],\s*.*:\s*\[(.*)\],\s*.*:\s*([^;]+)",
             r"(.+):(.+),\[(.*)\],\[(.*)\],([^;]+)",
+        ]
+
+
+class Task_ext_Medication(Task_ext):
+    def __init__(self, args, task):
+        super().__init__(args, task)
+
+        self.sep_event = "\n"
+        # Define the subject and the features of the medication
+        self.list_field_subject = ["medication"]
+        self.list_field_feature = ["status"]
+        self.list_pattern = [
+            r"medication: (.+), status: (.+);",
+            r".*:\s*(.+),\s*.*:\s*([^;]+)",
         ]

@@ -1,0 +1,5 @@
+{
+  "Qwen3-30B-A3B-Instruct-2507": "/path/to/Qwen3-30B-A3B-Instruct-2507",
+  "Llama-3.1-8B-Instruct": "/path/to/Llama-3.1-8B-Instruct",
+  "gpt-oss-20b": "/path/to/gpt-oss-20b"
+}

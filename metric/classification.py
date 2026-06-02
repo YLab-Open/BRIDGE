@@ -48,6 +48,7 @@ def calc_metrics_clf(list_pred, list_label, average=None):
 
 
 def convert_to_binary_matrix(list_list, label_to_index):
+    """Convert a list of label lists into a multi-hot binary matrix."""
     binary_matrix = np.zeros((len(list_list), len(label_to_index)), dtype=int)
     for i, labels in enumerate(list_list):
         for label in labels:
@@ -172,12 +173,12 @@ def calc_metrics_clf_ordered(list_pred, list_label):
         dict_metrics["pearson"] = 0
         dict_metrics["spearman"] = 0
 
-    # Calculat the mae and rmse
+    # Calculate the MAE and RMSE
     list_diff = [abs(pred - label) for pred, label in zip(list_pred, list_label)]
     dict_metrics["mae"] = np.mean(list_diff)
     dict_metrics["rmse"] = np.sqrt(np.mean([diff**2 for diff in list_diff]))
 
-    # Caluculate the Quadratic Weighted Kappa
+    # Calculate the Quadratic Weighted Kappa
     qwk = cohen_kappa_score(list_label, list_pred, weights="quadratic")
     dict_metrics["qwk"] = qwk
 
@@ -214,7 +215,7 @@ def print_metrics_clf(
         list_metrics = get_metrics_clf()
 
     str_metric = ""
-    str_missing_output = "Mising model:\n\t"
+    str_missing_output = "Missing model:\n\t"
     for model in list_model:
         if model in dict_model_metrics:
             for metric in list_metrics:

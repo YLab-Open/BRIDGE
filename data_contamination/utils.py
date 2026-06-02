@@ -72,7 +72,8 @@ def get_max_token(model_name, model_path):
         else:
             max_token_all = 100 * 1024
 
-    max_token_all = 100 * 1024 if max_token_all > 100 * 1024 else max_token_all
+    # max_token_all = 100 * 1024 if max_token_all > 100 * 1024 else max_token_all
+    max_token_all = 10 * 1024
 
     return max_token_all
 
@@ -80,7 +81,7 @@ def get_max_token(model_name, model_path):
 def load_model(model_name):
     print(f"Loaded model: {model_name} with hf")
     with open(
-        "../dict_model_path.json",
+        "../configs/dict_model_path.json",
         "r",
         encoding="utf-8",
     ) as f:
@@ -126,7 +127,7 @@ def load_model_vllm(model_name, seed=42, ngram=5):
 
     # model path
     with open(
-        "../dict_model_path.json",
+        "../configs/dict_model_path.json",
         "r",
         encoding="utf-8",
     ) as f:
@@ -154,7 +155,9 @@ def load_model_vllm(model_name, seed=42, ngram=5):
             dtype="bfloat16",
             trust_remote_code=True,
             max_model_len=max_token_all,
-            gpu_memory_utilization=0.95,
+            gpu_memory_utilization=0.80,
+            # max_num_batched_tokens=8192,
+            # async_scheduling=True,
         )
     # sampling params
     sampling_params = SamplingParams(seed=seed, temperature=0, max_tokens=ngram)
@@ -228,7 +231,6 @@ def get_data_from_task(tasks, path_dir_data="../dataset_raw/"):
                     f"Loaded task: {task_name} with {len(dict_task_data[task_name])} samples"
                 )
         else:
-            # print(f"Skip task: {task_name} with {len(dict_task_data[task_name])} samples")
             pass
 
     print(f"Loaded {len(dict_task_data)} tasks")
@@ -291,32 +293,11 @@ def calculate_my_n_gram_accuracy_vllm(
     list_input = []
     list_output_text, list_output_token, list_idx_pos = [], [], []
 
-    # If need to extend the starting positions
-    # preset_positions = [40, 80, 160, 320, 640]
-
     for idx_data, tokens in enumerate(dataset_tokenized):
-        # Get the starting positions between min_prompt_start and max_token_all
-        # len_tokens = len(tokens)
-        # if min_prompt_start + n > len_tokens:
-        #     continue
-        # Select starting points using linspace
-        # list_pos_start = np.linspace(
-        #     min_prompt_start,
-        #     min(len_tokens, max_token_all) - n,
-        #     num=k,
-        #     dtype=int,
-        # )
-        # list_pos_start = list(set(list_pos_start))
-
         if len(tokens) < min_prompt_start + (k - 1) * token_gap + n:
             continue
 
         list_pos_start = [min_prompt_start + i * token_gap for i in range(k)]
-
-        # Extend the starting positions with preset positions
-        # for pos_start in preset_positions:
-        #     if pos_start + n <= len(tokens):
-        #         list_pos_start.append(pos_start)
 
         # Build prompts and record the original n-gram IDs
         for pos_start in list_pos_start:
@@ -448,9 +429,6 @@ def calculate_my_n_gram_accuracy_hf_batch(
     list_input = []
     list_output_text, list_output_token, list_idx_pos = [], [], []
 
-    # If need to extend the starting positions
-    # preset_positions = [40, 80, 160, 320, 640]
-
     # Iterate over all samples
     for idx_data, tokens in enumerate(dataset_tokenized):
         # If the sample is too short, skip
@@ -459,11 +437,6 @@ def calculate_my_n_gram_accuracy_hf_batch(
 
         # Generate starting positions based on token_gap
         list_pos_start = [min_prompt_start + i * token_gap for i in range(k)]
-
-        # Extend the starting positions with preset positions
-        # for pos in preset_positions:
-        #     if pos + n <= len(tokens):
-        #         list_pos_start.append(pos)
 
         # deduplicate and sort the starting positions
         list_pos_start = list(set(list_pos_start))

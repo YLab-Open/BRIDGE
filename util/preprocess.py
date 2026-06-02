@@ -41,16 +41,12 @@ def preprocess_ehr_note(text):
     text = regex.sub(r"[ ]{2,}", " ", text)
     # # Remove duplicate lines
     list_line = text.split("\n")
-    seen = set()
     cleaned_lines = []
     for idx_line, line in enumerate(list_line):
-        # if line not in seen:
         if line != list_line[idx_line - 1] and line != list_line[idx_line - 2]:
             cleaned_lines.append(line)
-            seen.add(line)
     text = "\n".join(cleaned_lines)
 
     # Remove empty lines
-    # text = '\n'.join(line for line in text.split('\n') if line.strip() != '')
 
     return text.strip()

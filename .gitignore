@@ -3,6 +3,7 @@
 .ipynb_checkpoints/
 **/__pycache__/
 **/.ipynb_checkpoints/
+/.vscode/
 
 *.pyc
 *.pyo
@@ -10,3 +11,31 @@
 .DS_Store
 
 *.log
+
+# local-only configuration
+API.key.yaml
+dict_model_path.json
+configs/API.key.yaml
+configs/dict_model_path.json
+
+# generated or downloaded data
+dataset_raw/
+result/
+result_*/
+performance/
+performance_*/
+log/
+azure/
+gcp/
+deepseek/
+
+# notebook and analysis scratch files
+analysis*/
+*test.ipynb
+
+# data-contamination generated artifacts
+/data_contamination/azure/
+/data_contamination/data/
+/data_contamination/full/
+/data_contamination/log/
+/data_contamination/result/

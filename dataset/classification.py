@@ -25,6 +25,7 @@ class Task_clf_binary(GeneralEvaluation):
     """
 
     def __init__(self, args, task):
+        """Initialize binary label mapping and extraction patterns."""
         super().__init__(args, task)
 
         self.dict_label_map = {
@@ -33,54 +34,58 @@ class Task_clf_binary(GeneralEvaluation):
         }
 
         # Define the regex pattern for the binary label
-        # Importanly, the order of the pattern is essential, the first pattern has higher priority which means it totally match the expected output
+        # Importantly, the order of the pattern is essential, the first pattern has higher priority which means it totally match the expected output
         self.list_pattern = [
             r"answer: (yes|no)",
             r"answer:?\s*(yes|no)",
             r"\b(yes|no)\b",
         ]
 
-    def get_label(self, list_dict_data, prompt_mode="direct"):
-        list_label = []
-        for dict_data in list_dict_data:
-            string_label = process_pred(
-                dict_data["output"], flag_lower=True, flag_punc_to_en=True
-            )
-            label = regex.search(
-                self.list_pattern[0], string_label, regex.IGNORECASE
-            ).group(1)
-            label = self.dict_label_map[label]
-            list_label.append(label)
-        return list_label
+    def get_label_one(self, str_output, prompt_mode="direct"):
+        """Parse one gold binary label from the expected output text."""
+        string_label = process_pred(str_output, flag_lower=True, flag_punc_to_en=True)
+        result_match = regex.search(
+            self.list_pattern[0], string_label, regex.IGNORECASE
+        )
+        label = result_match.group(1)
+        label = self.dict_label_map[label]
+        return label
 
-    def get_pred_none(self, list_pred, list_label):
-        return get_pred_none_clf(list_pred, list_label)
+    def get_pred_one(self, str_pred, prompt_mode="direct"):
+        """Parse one predicted binary label from model output."""
+        response = process_pred(str_pred, flag_lower=True, flag_punc_to_en=True)
+        response = extract_pred(response, prompt_mode=prompt_mode)
+        # Initialize the prediction as -1
+        pred = -1
+        # Find the label by searching the list of patterns
+        for pattern in self.list_pattern:
+            result_found = regex.search(pattern, response, regex.IGNORECASE)
+            if result_found:
+                # Transform the textual response to binary label
+                pred = self.dict_label_map[result_found.group(1)]
+                break
+        return pred
+
+    def get_label(self, list_dict_data, prompt_mode="direct"):
+        """Parse gold labels for all result records."""
+        return [
+            self.get_label_one(dict_data["output"], prompt_mode=prompt_mode)
+            for dict_data in list_dict_data
+        ]
 
     def get_pred(self, list_dict_data, prompt_mode="direct"):
-        list_pred = []
-        for dict_data in list_dict_data:
-            response = process_pred(
-                dict_data["pred"], flag_lower=True, flag_punc_to_en=True
-            )
-            response = extract_pred(response, prompt_mode=prompt_mode)
-            # Initialize the prediction as -1
-            pred = -1
-            # Find the label by searching the list of patterns
-            for pattern in self.list_pattern:
-                result_found = regex.search(pattern, response, regex.IGNORECASE)
-                if result_found:
-                    # Transform the textual response to binary label
-                    pred = self.dict_label_map[result_found.group(1)]
-                    break
-            # Append the prediction to the list of prediction
-            # If the prediction is not found, append -1
-            # The invalid prediction will be handled later
-            # If the prediction is found, append the extracted label
-            list_pred.append(pred)
+        """Parse predicted labels for all result records."""
+        return [
+            self.get_pred_one(dict_data["pred"], prompt_mode=prompt_mode)
+            for dict_data in list_dict_data
+        ]
 
-        return list_pred
+    def get_pred_none(self, list_pred, list_label):
+        """Replace invalid predictions for binary classification."""
+        return get_pred_none_clf(list_pred, list_label)
 
     def get_performance(self, list_pred, list_label):
+        """Compute standard single-label classification metrics."""
         # single-label classification
         dict_performance = calc_metrics_clf(
             list_pred=list_pred,
@@ -96,6 +101,7 @@ class Task_clf_mul_class(GeneralEvaluation):
     """
 
     def __init__(self, args, task):
+        """Initialize multi-class extraction patterns."""
         super().__init__(args, task)
 
         # Define the regex pattern for the binary label
@@ -105,40 +111,47 @@ class Task_clf_mul_class(GeneralEvaluation):
             r"\b([a-e])\b",
         ]
 
-    def get_label(self, list_dict_data, prompt_mode="direct"):
-        list_label = []
-        for dict_data in list_dict_data:
-            string_label = process_pred(
-                dict_data["output"], flag_lower=True, flag_punc_to_en=True
-            )
-            result_match = regex.search(
-                self.list_pattern[0], string_label, regex.IGNORECASE
-            )
-            string_label = result_match.group(1)
-            list_label.append(string_label)
-        return list_label
+    def get_label_one(self, str_output, prompt_mode="direct"):
+        """Parse one gold multi-class label from expected output text."""
+        string_label = process_pred(str_output, flag_lower=True, flag_punc_to_en=True)
+        result_match = regex.search(
+            self.list_pattern[0], string_label, regex.IGNORECASE
+        )
+        string_label = result_match.group(1)
+        return string_label
 
-    def get_pred_none(self, list_pred, list_label):
-        return get_pred_none_clf(list_pred, list_label)
+    def get_pred_one(self, str_pred, prompt_mode="direct"):
+        """Parse one predicted multi-class label from model output."""
+        response = process_pred(str_pred, flag_lower=True, flag_punc_to_en=True)
+        response = extract_pred(response, prompt_mode=prompt_mode)
+        pred = -1
+        for pattern in self.list_pattern:
+            result_found = regex.search(pattern, response, regex.IGNORECASE)
+            if result_found:
+                pred = result_found.group(1)
+                break
+        return pred
+
+    def get_label(self, list_dict_data, prompt_mode="direct"):
+        """Parse gold labels for all result records."""
+        return [
+            self.get_label_one(dict_data["output"], prompt_mode=prompt_mode)
+            for dict_data in list_dict_data
+        ]
 
     def get_pred(self, list_dict_data, prompt_mode="direct"):
-        list_pred = []
-        for dict_data in list_dict_data:
-            response = process_pred(
-                dict_data["pred"], flag_lower=True, flag_punc_to_en=True
-            )
-            response = extract_pred(response, prompt_mode=prompt_mode)
-            pred = -1
-            for pattern in self.list_pattern:
-                result_found = regex.search(pattern, response, regex.IGNORECASE)
-                if result_found:
-                    pred = result_found.group(1)
-                    break
-            list_pred.append(pred)
+        """Parse predicted labels for all result records."""
+        return [
+            self.get_pred_one(dict_data["pred"], prompt_mode=prompt_mode)
+            for dict_data in list_dict_data
+        ]
 
-        return list_pred
+    def get_pred_none(self, list_pred, list_label):
+        """Replace invalid predictions for multi-class classification."""
+        return get_pred_none_clf(list_pred, list_label)
 
     def get_performance(self, list_pred, list_label):
+        """Compute standard single-label classification metrics."""
         # single-label classification
         dict_performance = calc_metrics_clf(
             list_pred=list_pred,
@@ -154,6 +167,7 @@ class Task_clf_mul_label(GeneralEvaluation):
     """
 
     def __init__(self, args, task):
+        """Initialize multi-label extraction patterns and separators."""
         super().__init__(args, task)
 
         # Define the regex pattern for the multi-label
@@ -170,67 +184,75 @@ class Task_clf_mul_label(GeneralEvaluation):
         # Define the list of labels
         # self.list_label = ["a", "b", ...]
 
-    def get_label(self, list_dict_data, prompt_mode="direct"):
-        list_list_label = []
-        for dict_data in list_dict_data:
-            list_label = []
-            string_result = process_pred(
-                dict_data["output"], flag_lower=True, flag_punc_to_en=True
-            )
-            # Find the string of result by seaching the prefix pattern
-            for pattern in self.list_pattern:
-                result_match = regex.search(pattern, string_result, regex.IGNORECASE)
-                if result_match:
-                    string_result = result_match.group(1)
-                    break
-            # Split the string of result by the separator, get the list of labels
-            for string_label in string_result.split(self.sep_label):
-                string_label = string_label.strip()
-                # Find the label by searching the list of labels
-                if self.list_label:
-                    for label in self.list_label:
-                        if label == string_label:
-                            list_label.append(label)
-                            break
-                # If the list of labels is not defined, directly use the string as label, such as for the normalizaiton task
-                else:
-                    list_label.append(string_label)
-            list_list_label.append(list_label)
-        return list_list_label
+    def get_label_one(self, str_output, prompt_mode="direct"):
+        """Parse one gold list of labels from expected output text."""
+        list_label = []
+        string_result = process_pred(str_output, flag_lower=True, flag_punc_to_en=True)
+        # Find the string of result by seaching the prefix pattern
+        for pattern in self.list_pattern:
+            result_match = regex.search(pattern, string_result, regex.IGNORECASE)
+            if result_match:
+                string_result = result_match.group(1)
+                break
+        # Split the string of result by the separator, get the list of labels
+        for string_label in string_result.split(self.sep_label):
+            string_label = string_label.strip()
+            # Find the label by searching the list of labels
+            if self.list_label:
+                for label in self.list_label:
+                    if label == string_label:
+                        list_label.append(label)
+                        break
+            # If the list of labels is not defined, directly use the string as label, such as for the normalization task
+            else:
+                list_label.append(string_label)
+        return list_label
 
-    def get_pred_none(self, list_pred, list_label):
-        return get_pred_none_clf_mul_label(list_pred, list_label)
+    def get_pred_one(self, str_pred, prompt_mode="direct"):
+        """Parse one predicted list of labels from model output."""
+        list_pred = []
+        response = process_pred(str_pred, flag_lower=True, flag_punc_to_en=True)
+        response = extract_pred(response, prompt_mode=prompt_mode)
+        for pattern in self.list_pattern:
+            result_match = regex.search(pattern, response, regex.IGNORECASE)
+            if result_match:
+                response = result_match.group(1)
+                break
+        for string_label in response.split(self.sep_label):
+            string_label = string_label.strip()
+            string_label = string_label.replace('"', "").replace("'", "")
+            if self.list_label:
+                for label in self.list_label:
+                    if label in string_label:
+                        list_pred.append(label)
+                        break
+            else:
+                list_pred.append(string_label)
+        if len(list_pred) == 0:
+            return [-1]
+        else:
+            return list_pred
+
+    def get_label(self, list_dict_data, prompt_mode="direct"):
+        """Parse gold multi-label lists for all result records."""
+        return [
+            self.get_label_one(dict_data["output"], prompt_mode=prompt_mode)
+            for dict_data in list_dict_data
+        ]
 
     def get_pred(self, list_dict_data, prompt_mode="direct"):
-        list_list_pred = []
-        for dict_data in list_dict_data:
-            list_pred = []
-            response = process_pred(
-                dict_data["pred"], flag_lower=True, flag_punc_to_en=True
-            )
-            response = extract_pred(response, prompt_mode=prompt_mode)
-            for pattern in self.list_pattern:
-                result_match = regex.search(pattern, response, regex.IGNORECASE)
-                if result_match:
-                    response = result_match.group(1)
-                    break
-            for string_label in response.split(self.sep_label):
-                string_label = string_label.strip()
-                string_label = string_label.replace('"', "").replace("'", "")
-                if self.list_label:
-                    for label in self.list_label:
-                        if label in string_label:
-                            list_pred.append(label)
-                            break
-                else:
-                    list_pred.append(string_label)
-            if len(list_pred) == 0:
-                list_list_pred.append([-1])
-            else:
-                list_list_pred.append(list_pred)
-        return list_list_pred
+        """Parse predicted multi-label lists for all result records."""
+        return [
+            self.get_pred_one(dict_data["pred"], prompt_mode=prompt_mode)
+            for dict_data in list_dict_data
+        ]
+
+    def get_pred_none(self, list_pred, list_label):
+        """Replace invalid predictions for multi-label classification."""
+        return get_pred_none_clf_mul_label(list_pred, list_label)
 
     def get_performance(self, list_pred, list_label):
+        """Compute multi-label classification metrics."""
         # single question - multiple-label classification
         dict_performance, array_pred, array_label, label_to_index = (
             calc_metrics_clf_mul_label(
@@ -312,6 +334,7 @@ class Task_clf_mul_question(GeneralEvaluation):
     """
 
     def __init__(self, args, task):
+        """Initialize per-question label separators and extraction patterns."""
         super().__init__(args, task)
 
         self.sep_label = "\n"
@@ -330,6 +353,7 @@ class Task_clf_mul_question(GeneralEvaluation):
         }
 
     def get_label(self, list_dict_data, prompt_mode="direct"):
+        """Parse gold labels for every question across all samples."""
         # expected output: "label_of_question_1, label_of_question_2, ..."
         list_list_label = [[] for _ in range(len(self.dict_list_pattern))]
         for dict_data in list_dict_data:
@@ -348,9 +372,11 @@ class Task_clf_mul_question(GeneralEvaluation):
         return list_list_label
 
     def get_pred_none(self, list_pred, list_label):
+        """Replace invalid per-question predictions."""
         return get_pred_none_clf_mul_question(list_pred, list_label)
 
     def get_pred(self, list_dict_data, prompt_mode="direct"):
+        """Parse predicted labels for every question across all samples."""
         num_questions = len(self.dict_list_pattern)
         list_list_pred = []
         for dict_data in list_dict_data:
@@ -386,8 +412,8 @@ class Task_clf_mul_question(GeneralEvaluation):
         return list_list_pred
 
     def get_performance_questions(self, list_pred, list_label):
+        """Compute metrics independently for each question."""
         # multiple-question - single label classification
-        num_question = len(list_label[0])
         name_question = list(self.dict_list_pattern.keys())
         dict_performance_question = {}, {}
         for idx_q, name_q in enumerate(name_question):
@@ -403,6 +429,7 @@ class Task_clf_mul_question(GeneralEvaluation):
         return dict_performance_question
 
     def get_performance(self, list_pred, list_label):
+        """Average per-question classification metrics."""
         # multiple-question - single label classification
         num_question = len(list_label[0])
         name_question = list(self.dict_list_pattern.keys())
@@ -1292,9 +1319,41 @@ class Task_nor_CHIP_CDN(Task_clf_mul_label):
         super().__init__(args, task)
 
         self.list_pattern = [
-            # Normalized terms: 前列腺未特指的疾患, 高甘油三酯血症
+            # Example format: Normalized terms: <term_1>, <term_2>
             r"Normalized terms: (.+)",
             r"Normalized terms:?\s*(.+)",
+            r"\b(.+)\b",
+        ]
+
+        self.sep_label = ","
+
+        self.list_label = None
+
+
+class Task_nor_mimic_iii_outcome_diagnosis(Task_clf_mul_label):
+    def __init__(self, args, task):
+        super().__init__(args, task)
+
+        self.list_pattern = [
+            # ICD-9 Diagnosis Code: 518, 415, 998, 511, 285, 486, 999, 038, 995, 584, 958, E934, 459, 327, 428, 278, 354
+            r"ICD-9 Diagnosis Code:(.+)",
+            r"ICD-9 Diagnosis Code:?\s*(.+)",
+            r"\b(.+)\b",
+        ]
+
+        self.sep_label = ","
+
+        self.list_label = None
+
+
+class Task_nor_mimic_iii_outcome_procedure(Task_clf_mul_label):
+    def __init__(self, args, task):
+        super().__init__(args, task)
+
+        self.list_pattern = [
+            # ICD-9 Procedure Code: 66, 372, 885, 992, 389, 40
+            r"ICD-9 Procedure Code:(.+)",
+            r"ICD-9 Procedure Code:?\s*(.+)",
             r"\b(.+)\b",
         ]
 

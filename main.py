@@ -1,75 +1,18 @@
 import os
-import json
-import yaml
 import argparse
 import datetime
 import setproctitle
 from pathlib import Path
 
 from util.tool import init_logger
-from dataset.dataset import GeneralTask
-from model.init import seed_everything
-from model.init import init_model
-from model.inference import run_hf, run_vllm
-
-
-def parse_gpu_list(gpu_str: str) -> list[int]:
-    """Convert '0,1,2' -> [0,1,2] and validate."""
-    try:
-        return [int(x) for x in gpu_str.split(",") if x != ""]
-    except ValueError as e:
-        raise ValueError(f"Invalid --gpus format: {gpu_str}") from e
-
-
-def log_task(args, logger, task_name, task, str_time_start_task):
-    """Log the task and experiment information."""
-    # Log model and task information
-    logger.info(f"Model: {args.model_name}: {args.model_path}")
-    logger.info(f"Task: {task_name}")
-    logger.info(
-        f"Size: train={len(task.dataset_train)}, dev={len(task.dataset_dev)}, "
-        f"test={len(task.dataset_test)}"
-    )
-
-    # Log the experiment parameters
-    logger.info("\n" + "-" * 30 + "\n")
-    logger.info("Experiment parameters:")
-    for key, value in args.__dict__.items():
-        if key not in ["tasks", "temperature", "top_p", "top_k"]:
-            logger.info(f" - {key}: {value}")
-    logger.info("\n" + "-" * 30 + "\n")
-
-    logger.info(f"Start on: {str_time_start_task}")
-    logger.info("\n" + "=" * 50 + "\n")
-
-
-def save_result(args, logger, list_dict_data, list_response, save_input=True):
-    """Save predictions into json file."""
-    list_to_save = []
-    for dict_data, pred in zip(list_dict_data, list_response):
-        if save_input:
-            # Save the original data and the response
-            dict_data["pred"] = pred
-            list_to_save.append(dict_data)
-        else:
-            # Only save the response, not the original instruction and input
-            dict_result = {
-                "id": dict_data["id"],
-                "type": dict_data["type"],
-                "language": dict_data["language"],
-                "output": dict_data["output"],
-                "pred": pred,
-            }
-            list_to_save.append(dict_result)
-
-    # Save the results to a json file
-    Path(args.path_file_result).parent.mkdir(parents=True, exist_ok=True)
-    with open(args.path_file_result, "w", encoding="utf-8") as f:
-        json.dump(list_to_save, f, indent=4, ensure_ascii=False)
-
-    logger.info(f"Save: {args.path_file_result}")
-    logger.info("\n" + "-" * 30 + "\n")
-    return list_to_save
+from util.runtime import (
+    get_task_dataloader,
+    load_yaml_config,
+    log_task,
+    merge_config_into_args,
+    normalize_runtime_args,
+    validate_args,
+)
 
 
 if __name__ == "__main__":
@@ -84,7 +27,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--model_file",
         type=str,
-        default="dict_model_path.json",
+        default="configs/dict_model_path.json",
         help="Path to a JSON file containing model name to model path mapping.",
     )
     parser.add_argument(
@@ -94,32 +37,30 @@ if __name__ == "__main__":
         help="The gpus for the model.",
     )
     parser.add_argument(
-        "--config",
+        "--engine",
         type=str,
         default=None,
+        help="Inference engine: vllm or hf.",
+    )
+    parser.add_argument(
+        "--config",
+        type=str,
+        default="configs/BRIDGE.yaml",
         help="Path to a YAML config file containing tasks, exp_configs, and other arguments.",
     )
 
     args = parser.parse_args()
 
-    args.gpus = parse_gpu_list(args.gpus)
-    args.num_workers = len(args.gpus) * 2
-
     # ---------- Load YAML & merge ----------
-    if args.config:
-        cfg_path = Path(args.config)
-        if not cfg_path.exists():
-            raise FileNotFoundError(f"Config file not found: {cfg_path.resolve()}")
+    dict_cfg = load_yaml_config(args.config)
+    merge_config_into_args(args, parser, dict_cfg)
+    validate_args(args)
+    normalize_runtime_args(args)
 
-        with open(cfg_path, encoding="utf-8") as f:
-            dict_cfg = yaml.safe_load(f)
-
-        # Write the YAML key value back to argparse.Namespace
-        # Note: YAML has a lower priority than CLI
-        for k, v in dict_cfg.items():
-            if getattr(args, k, None) == parser.get_default(k):
-                # Only set if not already set by CLI
-                setattr(args, k, v)
+    from dataset.dataset import GeneralTask
+    from model.init import seed_everything
+    from model.init import init_model
+    from model.inference import run_hf, run_vllm, save_result
 
     # ---------- Experiment config ----------
     args.tasks.sort()
@@ -129,6 +70,13 @@ if __name__ == "__main__":
 
     # Initialize the model and tokenizer
     tokenizer, model = init_model(args)
+
+    # Confirm whether the save_input was set in the config file
+    if not hasattr(args, "save_input"):
+        args.save_input = True
+        print("Not assign save_input, set to True by default")
+    else:
+        print(f"Manually set save_input to: {args.save_input}")
 
     # Set the name of the experiment
     setproctitle.setproctitle(f"Benchmark: {args.model_name}-{num_exp_all} runs.")
@@ -148,7 +96,7 @@ if __name__ == "__main__":
         task = GeneralTask(args=args, task_name=task_name)
 
         # Define the directory for the result
-        args.path_dir_result = Path("result") / task_name / args.model_name
+        args.path_dir_result = Path(args.dir_result_save) / task_name / args.model_name
         args.path_dir_result.mkdir(parents=True, exist_ok=True)
 
         # Initialize the logger
@@ -173,19 +121,16 @@ if __name__ == "__main__":
             args.prompt_mode = prompt_mode
             task.setup(tokenizer, prompt_mode)
 
-            # Initialize the dataloader
-            if args.mode == "test":
-                dataloader = task.dataloader_test(args.batch_size, args.num_workers)
-            elif args.mode == "dev":
-                dataloader = task.dataloader_dev(args.batch_size, args.num_workers)
-            elif args.mode == "train":
-                dataloader = task.dataloader_train(args.batch_size, args.num_workers)
-            else:
-                raise ValueError(
-                    f"Invalid mode: {args.mode}. Choose from 'train', 'dev', or 'test'."
-                )
+            # Initialize the selected split dataloader.
+            dataset, dataloader = get_task_dataloader(
+                task=task,
+                mode=args.mode,
+                batch_size=args.batch_size,
+                num_workers=args.num_workers,
+            )
             logger.info(f"Running in {args.mode} mode, loading {args.mode} dataloader.")
-            logger.info(f"DataLoader: {len(dataloader)} batches")
+            logger.info(f"Dataset size: {len(dataset)} samples")
+            logger.info(f"DataLoader size: {len(dataloader)} batches")
 
             # Set the seed
             args.seed = seed
@@ -211,9 +156,13 @@ if __name__ == "__main__":
             logger.info(f"Name of experiment: {args.name_exp}")
 
             # Run: inference
-            if args.inference_mode == "vllm":
+            if args.engine == "vllm":
                 list_response = run_vllm(
-                    args=args, logger=logger, dataloader=dataloader, model=model
+                    args=args,
+                    logger=logger,
+                    dataset=dataset,
+                    dataloader=dataloader,
+                    model=model,
                 )
             else:
                 list_response = run_hf(
@@ -225,8 +174,12 @@ if __name__ == "__main__":
                 )
 
             # Save results
-            list_dict_data = save_result(
-                args, logger, task.dataset_test, list_response, save_input=True
+            save_result(
+                logger=logger,
+                dataset=dataset,
+                list_response=list_response,
+                path_file_save=args.path_file_result,
+                save_input=args.save_input,
             )
 
             logger.info(f"Finished: {args.name_exp}")

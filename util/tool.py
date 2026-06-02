@@ -6,9 +6,11 @@ import time
 import logging
 import random
 from scipy import stats
+from typing import Any, Dict, List
 
 
 def sizeof_fmt(num, suffix="B"):
+    """Convert a byte count into a compact human-readable string."""
     for unit in ["", "Ki", "Mi", "Gi", "Ti", "Pi", "Ei", "Zi"]:
         if abs(num) < 1024.0:
             return "%3.1f%s%s" % (num, unit, suffix)
@@ -17,6 +19,7 @@ def sizeof_fmt(num, suffix="B"):
 
 
 def get_size_mem(data):
+    """Return the approximate memory size of a Python object."""
     return sizeof_fmt(sys.getsizeof(data))
 
 
@@ -102,6 +105,7 @@ def txt_to_list_nested(path_saved, token_split=" "):
 
 
 def list_drop_duplicate(list_processed):
+    """Remove duplicate list items while preserving the first-seen order."""
     list_new = list(set(list_processed))
     list_new.sort(key=list_processed.index)
     return list_new
@@ -161,6 +165,7 @@ def get_dict_part(dict_original, size, shuffle=True):
 
 
 def list_flatten(nested_list):
+    """Flatten one level of list nesting."""
     flat_list = []
     # Iterate through the outer list
     for element in nested_list:
@@ -193,11 +198,27 @@ def list_clean_blank(list_processed):
     )
 
 
-def load_json(input_file):
-    with open(input_file, "r") as f:
-        samples = json.load(f)
-    return samples
+def load_json(path_file: str) -> Any:
+    """Load and return the parsed content of a JSON file."""
+    with open(path_file, "r", encoding="utf-8") as f:
+        return json.load(f)
 
+
+def load_jsonl(path_file: str) -> List[Dict[str, Any]]:
+    """Load a JSONL file and return a list of dicts."""
+    with open(path_file, "r", encoding="utf-8") as f:
+        return [json.loads(line) for line in f if line.strip()]
+
+def write_json(data: List[Dict[str, Any]], path_file: str):
+    """Write a list of dicts to a JSON file."""
+    with open(path_file, "w", encoding="utf-8") as f:
+        json.dump(data, f, indent=2, ensure_ascii=False)
+
+def write_jsonl(data: List[Dict[str, Any]], path_file: str):
+    """Write a list of dicts to a JSONL file."""
+    with open(path_file, "w", encoding="utf-8") as f:
+        for item in data:
+            f.write(json.dumps(item, ensure_ascii=False) + "\n")
 
 def load_dict(dict_path):
     """load_dict"""
@@ -209,12 +230,14 @@ def load_dict(dict_path):
 
 
 def write_dict(dict_path, dict_data):
+    """Write an integer-key dictionary to a tab-separated text file."""
     with open(dict_path, "w", encoding="utf-8") as f:
         for key, value in dict_data.items():
             f.writelines("{}\t{}\n".format(key, value))
 
 
 def str_q2b(text):
+    """Convert full-width characters to half-width equivalents."""
     ustring = text
     rstring = ""
     for uchar in ustring:
@@ -228,7 +251,8 @@ def str_q2b(text):
 
 
 def init_logger(log_file=None, log_file_level=logging.NOTSET):
-    if os.path.exists(log_file):
+    """Create a root logger with console output and optional file logging."""
+    if log_file and os.path.exists(log_file):
         os.remove(log_file)
     log_format = logging.Formatter(
         fmt="%(asctime)s - %(levelname)s - %(name)s -   %(message)s",
@@ -256,12 +280,15 @@ class ProgressBar(object):
     """
 
     def __init__(self, n_total, width=30, desc="Training"):
+        """Initialize display width, total steps, and description."""
         self.width = width
         self.n_total = n_total
         self.start_time = time.time()
         self.desc = desc
 
-    def __call__(self, step, info={}):
+    def __call__(self, step, info=None):
+        """Render the progress bar for one step with optional scalar metrics."""
+        info = info or {}
         now = time.time()
         current = step + 1
         recv_per = current / self.n_total

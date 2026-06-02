@@ -1,19 +1,39 @@
-model_name=Qwen2.5-72B-Instruct
+#!/usr/bin/env bash
+set -euo pipefail
 
-# -------- GPU VISIBILITY --------
-gpus=4,5,6,7
-# 0,1,2,3,4,5,6,7
+dry_run=false
+if [[ "${1:-}" == "--dry-run" ]]; then
+    dry_run=true
+fi
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+CONFIG_FILE="${SCRIPT_DIR}/BRIDGE_data_contamination.yaml"
+LOG_DIR="${SCRIPT_DIR}/log"
+
+model_name=Llama-3.1-8B-Instruct
+gpus=0,1,2,3
 export CUDA_VISIBLE_DEVICES=$gpus
 
-# -------- Path to YAML config --------
-CONFIG_FILE="BRIDGE_data_contamination.yaml"
+mkdir -p "$LOG_DIR"
 
-# -------- RUN --------
-now=$(date +"%m-%d_%H-%M")
-nohup python data_contamination.py \
-    --model_name $model_name \
-    --config "$CONFIG_FILE" \
-    > log/${model_name}.${now}.log 2>&1 &
+cmd=(
+    python data_contamination.py
+    --model_name "$model_name"
+    --config "$CONFIG_FILE"
+)
 
-# -------- Log output --------
-echo "Job started, log in log/${model_name}.${now}.log"
+now=$(date +"%m-%d_%H-%M-%S")
+log_file="$LOG_DIR/${model_name}.${now}.log"
+
+cd "$SCRIPT_DIR"
+
+if [[ "$dry_run" == true ]]; then
+    echo "Dry run. Command:"
+    printf ' %q' "${cmd[@]}"
+    echo
+    echo "Log file: $log_file"
+    exit 0
+fi
+
+nohup "${cmd[@]}" > "$log_file" 2>&1 &
+echo "Job started, log in $log_file"

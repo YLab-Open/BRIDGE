@@ -77,7 +77,7 @@ if __name__ == "__main__":
     for idx_task, (task, data) in enumerate(dict_task_data.items()):
         print("\n" + "=" * 20, "Start: ", task, "=" * 20 + "\n")
 
-        data_input = [dict_data["input"] for dict_data in data][:64]
+        data_input = [dict_data["input"] for dict_data in data]
 
         print(f"Data size: {len(data_input)}")
 

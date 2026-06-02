@@ -1,15 +1,8 @@
-import sys
-import evaluate
-import bert_score
 import numpy as np
-from rouge_score import rouge_scorer
-from transformers import BasicTokenizer
 from nltk.data import load as nltk_load
-from nltk.tokenize import word_tokenize
 from nltk.tokenize.destructive import NLTKWordTokenizer
 from nltk.translate.bleu_score import sentence_bleu
 from nltk.translate.bleu_score import SmoothingFunction
-from nltk.translate.meteor_score import meteor_score
 
 from dataset.config import get_models_evaluate, get_metrics_gen
 
@@ -27,12 +20,16 @@ dict_lang_language = {
 
 
 class Tokenizer_gen:
+    """NLTK sentence/word tokenizer wrapper for generation metrics."""
+
     def __init__(self, lang="en"):
+        """Initialize language-specific NLTK tokenizers."""
         self.language = dict_lang_language[lang]
         self.tokenizer_lang = nltk_load(f"tokenizers/punkt/{self.language}.pickle")
         self.tokenizer_nltk = NLTKWordTokenizer()
 
     def tokenize(self, text):
+        """Tokenize text into words after language-specific sentence splitting."""
         token_temp = self.tokenizer_lang.tokenize(text)
         return [
             token for sent in token_temp for token in self.tokenizer_nltk.tokenize(sent)
@@ -40,20 +37,15 @@ class Tokenizer_gen:
 
 
 class Tokenizer_gen_zh_jp:
+    """Simple character tokenizer for Chinese and Japanese generation metrics."""
+
     def __init__(self, lang="zh"):
+        """Validate that the tokenizer is used for Chinese or Japanese."""
         if lang not in ["cn", "zh", "jp", "ja"]:
-            raise ValueError("Only support Chinese and Japanese")
+            raise ValueError("Only support Chinese and Japanese.")
 
     def tokenize(self, text):
-        # Option for jp: janome
-        # from janome.tokenizer import Tokenizer
-        # return [token.surface for token in t.tokenize(text)]
-
-        # Option for zh: jieba
-        # import jieba
-        # return jieba.lcut(text)
-
-        # Simple whitespace tokenizer
+        """Tokenize Chinese/Japanese text as non-space characters."""
         text = text.replace(" ", "")
         return list(text)
 
@@ -74,6 +66,8 @@ def calc_metrics_gen(list_pred, list_label, lang="en"):
         dict_metrics_avg (dict): Average metrics over all samples.
         dict_metrics_sample (dict): Per-sample metrics.
     """
+    import bert_score
+    from rouge_score import rouge_scorer
 
     assert len(list_label) == len(
         list_pred
@@ -198,6 +192,8 @@ def calc_metrics_gen_hf(list_pred, list_label, lang="en"):
             - METEOR
             - BERTScore
     """
+    import evaluate
+    from transformers import BasicTokenizer
 
     assert len(list_label) == len(
         list_pred
@@ -267,7 +263,7 @@ def print_metrics_gen(
         list_metrics = get_metrics_gen()
 
     str_metric = ""
-    str_missing_output = "Mising model:\n\t"
+    str_missing_output = "Missing model:\n\t"
     for model in list_model:
         if model in dict_model_metrics:
             for metric in list_metrics:

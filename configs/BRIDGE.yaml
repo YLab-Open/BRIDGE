@@ -1,0 +1,213 @@
+# Config template for BRIDGE.
+# Use with: --config configs/BRIDGE.yaml
+# Values below preserve the current default BRIDGE settings.
+# Comment optional fields to use code/model defaults.
+# CLI values for argparse-defined fields override YAML.
+
+# -- 1. Runtime --
+# Options: vllm / hf.
+# Note: vllm is recommended for local high-throughput offline inference.
+engine: vllm
+
+# -- 2. Experiments --
+
+# Dataset split.
+# Options: train / dev / test / all.
+# Note:
+#     - Use test for standard inference/evaluation;
+#     - Use all for all the splits of the dataset.
+mode: test
+
+# Experiment settings.
+# Each row is [prompt_mode, decoding_strategy, seed].
+# prompt_mode: direct / cot / direct-N-shot / cot-N-shot.
+# decoding_strategy: greedy / sampling.
+experiments:
+  - [direct, greedy, 42]
+  # - [cot, greedy, 42]
+  # - [direct-5-shot, greedy, 42]
+  # - [cot-5-shot, greedy, 42]
+  # - [direct, sampling, 42]
+  # - [cot, sampling, 42]
+
+# -- 3. Model Reasoning Controls --
+# Only applies to model families whose chat template supports enable_thinking in this code:
+#     - earlier Qwen3 thinking-capable models
+#     - gemma-4
+# Options: True / False.
+# Default for affected models if omitted: True.
+# Ignored by others.
+enable_thinking: True
+
+# Only applies to model families whose chat template supports reasoning_effort in this code:
+#     - gpt-oss models
+# Options: low / medium / high.
+# Default if omitted: "medium".
+# Ignored by other models.
+# reasoning_effort: high
+
+# -- 4. Batching And Saving --
+# Dataloader batch size.
+# "hf mode" it is the generation batch size.
+# "vllm mode": it is the number of prompts submitted to each model.generate() call; vLLM still controls active concurrency internally with max_num_seqs.
+batch_size: 512
+
+# Save partial results every N completed batches.
+# Larger values reduce JSON I/O but increase possible work lost after a crash.
+# Default: None, which means not to save partial results.
+# Recommended for large result files: 5-20.
+save_every_n_batches: 20
+
+# Whether to save full input/instruction/metadata in result JSON.
+# Default: True, which saves the full input/instruction/metadata.
+# Note: False saves only the id/type/language/output/pred to reduce file size.
+save_input: True
+
+# -- 5. Generation --
+# vLLM only. Fraction of GPU memory reserved for model execution and KV cache.
+# Default: 0.95.
+# Note: Use 0.85-0.90 on shared/fragmented GPUs; 0.90-0.95 gives more KV cache but higher OOM risk.
+gpu_memory_util: 0.90
+
+# Sampling-only parameters. Greedy ignores these.
+# Priority: YAML explicit value > local generation_config.json > code default.
+# Defaults without generation_config.json: sample_size=1, temperature=1.0, top_p=1.0, top_k=0.
+# sample_size: 1
+# temperature: 0.6
+# top_p: 0.95
+# top_k: 20
+# sample_eval_index: 0
+
+# -- 6. Context And Output Budget --
+# Total context budget. In vLLM this is max_model_len.
+# Default: 32768.
+# Note: If omitted, code reads model config or uses max_token_input + max_token_output when both are set.
+max_token_all: 32768
+
+# Max generated tokens per sample.
+# Default: 8192.
+# Note: If omitted, default is 512 for several legacy short-context models, otherwise int(max_token_all * 0.125).
+# Note: Too-large values are a common cause of vLLM KV-cache pressure.
+max_token_output: 8192
+
+# Max prompt tokens after formatting/truncation.
+# Default: max_token_all - max_token_output.
+# Note: Set explicitly when you want a fixed input budget independent of output budget.
+max_token_input: 24576
+
+# -- 7. vLLM Scheduler --
+# Maximum active sequences scheduled concurrently.
+# Default: set by vLLM.
+# Note: Lower values reduce KV-cache pressure; higher values may improve throughput for short prompts/outputs.
+# max_num_seqs: 32
+
+# Maximum tokens processed per scheduler iteration.
+# Default: set by vLLM.
+# Note: Leave unset first, try 8192/16384 only after runs are stable.
+# max_num_batched_tokens: 8192
+
+# -- 8. Debug Limit --
+# Limit samples per split/task for quick testing.
+# Omit to use the full selected split.
+# Default: None, which means not to limit the number of samples.
+# max_data_size: 20
+
+# -- 9. Paths --
+# Dataset root(s) containing <task>.SFT.json. Multiple directories can be comma-separated; the first existing task file is used.
+dir_dataset: dataset_raw
+
+# Result root(s). Multiple directories can be comma-separated or written as a YAML list.
+# Inference saves new outputs to the first directory to avoid duplicate writes.
+# Final path: <dir_result[0]>/<task_name>/<model_name>/<task_name>-<prompt_mode>-<decoding_strategy>-<seed>.result.json
+dir_result: result
+
+# -- 10. Tasks --
+# Note: The task file should be in the folder of dir_dataset and end with "SFT.json".
+tasks:
+  # - ADE-Drug dosage
+  # - ADE-Extraction
+  # - ADE-Identification
+  # - BARR2
+  # - BRONCO150-NER&Status
+  - BrainMRI-AIS
+  # - Brateca-Hospitalization
+  # - Brateca-Mortality
+  # - C-EMRS
+  # - CARDIO-DE
+  # - CARES ICD10 Block
+  # - CARES-Area
+  # - CARES-ICD10 Chapter
+  # - CARES-ICD10 Subblock
+  # - CAS-evidence
+  # - CAS-label
+  # - CBLUE-CDN
+  # - CHIP-CDEE
+  # - CHIP-CTC
+  # - CHIP-MDCFNPC
+  # - CLINpt-NER
+  # - CLIP
+  # - CLISTER
+  # - Cantemis-NER
+  # - Cantemis-Norm
+  # - Cantemist-Coding
+  # - ClinicalNotes-UPMC
+  # - CodiEsp-ICD-10-CM
+  # - CodiEsp-ICD-10-PCS
+  # - DiSMed-NER
+  # - DialMed
+  # - EHRQA-Primary department
+  # - EHRQA-QA
+  # - EHRQA-Sub department
+  # - Ex4CDS
+  # - GOUT-CC-Consensus
+  # - GraSSCo PHI
+  # - HealthCareMagic-100k
+  # - IFMIR-Incident type
+  # - IFMIR-NER
+  # - IFMIR-NER&factuality
+  # - IMCS-V2-DAC
+  # - IMCS-V2-MRG
+  # - IMCS-V2-NER
+  # - IMCS-V2-SR
+  # - JP-STS
+  # - MEDIQA 2019-RQE
+  # - MEDIQA 2023-chat-A
+  # - MEDIQA 2023-sum-A
+  # - MEDIQA 2023-sum-B
+  # - MIE
+  # - MIMIC-III Outcome.LoS
+  # - MIMIC-III Outcome.Mortality
+  # - MIMIC-IV BHC
+  # - MIMIC-IV CDM
+  # - MIMIC-IV DiReCT.Dis
+  # - MIMIC-IV DiReCT.PDD
+  # - MTS
+  # - MTS-Temporal
+  # - MedDG
+  # - MedNLI
+  # - MedSTS
+  # - Medication extraction
+  # - NUBES
+  # - NorSynthClinical-NER
+  # - NorSynthClinical-PHI
+  # - NorSynthClinical-RE
+  # - PPTS
+  # - RuCCoN
+  # - RuDReC-NER
+  # - RuMedDaNet
+  # - RuMedNLI
+  # - cMedQA
+  # - iCorpus
+  # - icliniq-10k
+  # - meddocan
+  # - n2c2 2006-De-identification
+  # - n2c2 2010-Assertion
+  # - n2c2 2010-Concept
+  # - n2c2 2010-Relation
+  # - n2c2 2014-CAD
+  # - n2c2 2014-De-identification
+  # - n2c2 2014-Diabetes
+  # - n2c2 2014-Hyperlipidemia
+  # - n2c2 2014-Hypertension
+  # - n2c2 2014-Medication
+  # - n2c2 2018-ADE&medication

@@ -3,6 +3,21 @@ from .config import extract_cot_pred
 from util.preprocess import process_punc_to_en
 
 
+def extract_thinking_output(text, warn_missing=False):
+    """Split reasoning traces from final output when a known marker exists."""
+    if "</think>" in text:
+        thinking, output = text.rsplit("</think>", 1)
+    elif "assistantfinal" in text:
+        thinking, output = text.rsplit("assistantfinal", 1)
+    elif "<channel|>" in text:
+        thinking, output = text.rsplit("<channel|>", 1)
+    else:
+        if warn_missing:
+            print(f"Warning: No thinking output prefix found in {text}")
+        thinking, output = "", text
+    return {"thinking": thinking, "output": output}
+
+
 def process_pred(text, flag_lower=True, flag_punc_to_en=True):
     """
     Converts common punctuation into English version.
@@ -20,7 +35,7 @@ def process_pred(text, flag_lower=True, flag_punc_to_en=True):
     return text.strip()
 
 
-def extract_pred(text, prompt_mode="direct"):
+def extract_pred(text, prompt_mode="direct", split_tokens=None):
     """
     Extracts the prediction from the text based on the prompt mode.
     Input:
@@ -29,12 +44,9 @@ def extract_pred(text, prompt_mode="direct"):
     Output:
         text: str
     """
-    if "</think>" in text:
-        text = text.split("</think>", 1)[1]
+    text = extract_thinking_output(text)["output"]
     if "cot" in prompt_mode:
         text = extract_cot_pred(text)
-    if "assistantfinal" in text:
-        text = text.split("assistantfinal", 1)[1]
     return text.strip()
 
 
@@ -46,10 +58,15 @@ def get_truncate_text(text, tokenizer, max_tokens):
     return text
 
 
-def num_tokens_from_messages(messages, tokenizer, chat_kwargs={}):
+def num_tokens_from_messages(messages, tokenizer, chat_kwargs=None):
     """Return the number of tokens used by a list of messages."""
+    chat_kwargs = chat_kwargs or {}
     token_template = tokenizer.apply_chat_template(
-        messages, tokenize=True, add_generation_prompt=True, **chat_kwargs
+        messages,
+        tokenize=True,
+        add_generation_prompt=True,
+        return_dict=False,
+        **chat_kwargs,
     )
     token_template_count = len(token_template)
     return token_template_count
@@ -163,8 +180,8 @@ def format_chat(
     max_token_input,
     times_word_token=7,
     num_token_reserve=10,
-    examples=[],
-    chat_kwargs={},
+    examples=None,
+    chat_kwargs=None,
 ):
     """
     Format the input for different models based on the prompt mode.
@@ -183,6 +200,9 @@ def format_chat(
 
     """
 
+    examples = examples or []
+    chat_kwargs = chat_kwargs or {}
+
     input_system = data["instruction"]
     input_user = data["input"]
     language = data["language"]
@@ -200,7 +220,7 @@ def format_chat(
             examples=examples,
         )
     elif "mellama" in model_name.lower():
-        example_ids, formatted_input = format_chat_mellama(
+        example_ids, formatted_input = format_chat_MeLLaMA(
             model_name=model_name,
             tokenizer=tokenizer,
             language=language,
@@ -232,6 +252,7 @@ def format_chat(
 
 
 def format_message(input_system, input_user, examples):
+    """Build standard system/user/assistant chat messages."""
     formatted_chat = [{"role": "system", "content": input_system}]
     for ex in examples:
         ex_chat = [
@@ -252,10 +273,14 @@ def get_formatted_chat(
     max_token_input,
     times_word_token=7,
     num_token_reserve=10,
-    examples=[],
+    examples=None,
     flag_openai=False,
-    chat_kwargs={},
+    chat_kwargs=None,
 ):
+    """Build standard chat messages while respecting the input token budget."""
+    examples = examples or []
+    chat_kwargs = chat_kwargs or {}
+
     # Step 1: Rough token estimation (not exact, but a starting point)
     initial_estimated_token_count = estimate_token_rough(
         input_system, input_user, language, times_word_token, examples
@@ -335,8 +360,8 @@ def format_chat_general(
     max_token_input,
     times_word_token=7,
     num_token_reserve=10,
-    examples=[],
-    chat_kwargs={},
+    examples=None,
+    chat_kwargs=None,
 ):
     """
     Format the input for general models with optional examples and length truncation.
@@ -359,6 +384,9 @@ def format_chat_general(
         formatted_input: A formatted input string for general models.
 
     """
+
+    examples = examples or []
+    chat_kwargs = chat_kwargs or {}
 
     if any(keyword in model_name.lower() for keyword in ["gemma-2", "biomistral"]):
         example_ids, formatted_chat = get_formatted_chat_user_assistant(
@@ -393,6 +421,7 @@ def format_chat_general(
 
 
 def format_message_user_assistant(input_system, input_user, examples):
+    """Build messages for templates that do not support a separate system role."""
     input_system = f"{input_system}\n\nInput:\n"
     if len(examples) > 0:
         formatted_input = [
@@ -424,7 +453,7 @@ def get_formatted_chat_user_assistant(
     max_token_input,
     times_word_token=7,
     num_token_reserve=10,
-    examples=[],
+    examples=None,
 ):
     """
     Format input for 'user_assistant' style models, supporting examples and length truncation.
@@ -445,6 +474,8 @@ def get_formatted_chat_user_assistant(
         Example_ids: A list of example IDs used in the formatted input.
         formatted_input: A formatted input string for 'user_assistant' models.
     """
+
+    examples = examples or []
 
     # Step 1: Rough token estimation (not exact, but a starting point)
     initial_estimated_token_count = estimate_token_rough(
@@ -482,7 +513,7 @@ def get_formatted_chat_user_assistant(
 
     # Step 4: Gradually add examples if there's space left
     examples_included = []
-    for idx_example, ex in enumerate(examples):
+    for ex in examples:
         chat_example = [
             {"role": "user", "content": "Input:\n" + ex["input"]},
             {"role": "assistant", "content": ex["output"]},
@@ -514,7 +545,7 @@ def format_chat_meditron(
     max_token_input,
     times_word_token=7,
     num_token_reserve=10,
-    examples=[],
+    examples=None,
 ):
     """
     Format input for Meditron, supporting examples and length truncation.
@@ -534,6 +565,8 @@ def format_chat_meditron(
         Example_ids: A list of example IDs used in the formatted input.
         formatted_input: A Formatted input string for Meditron.
     """
+
+    examples = examples or []
 
     # Estimate rough token count
     token_rough = estimate_token_rough(
@@ -595,7 +628,7 @@ def format_chat_meditron(
     return examples_included_ids, formatted_input
 
 
-def format_chat_mellama(
+def format_chat_MeLLaMA(
     model_name,
     tokenizer,
     language,
@@ -604,10 +637,10 @@ def format_chat_mellama(
     max_token_input,
     times_word_token=7,
     num_token_reserve=10,
-    examples=[],
+    examples=None,
 ):
     """
-    Format input for Mellama, supporting examples and length truncation.
+    Format input for MeLLaMA, supporting examples and length truncation.
 
     Args:
         model_name: The model's name (not used in current implementation, reserved for extensibility).
@@ -623,9 +656,10 @@ def format_chat_mellama(
 
     Returns:
         Example_ids: A list of example IDs used in the formatted input.
-        formatted_input: A formatted input string for Me-LLaMA.
-        formatted_input: A formatted input string for Me-LLaMA.
+        formatted_input: A formatted input string for MeLLaMA.
     """
+
+    examples = examples or []
 
     token_rough = estimate_token_rough(
         input_system, input_user, language, times_word_token, examples
@@ -677,6 +711,7 @@ def format_chat_mellama(
 
 
 def format_message_gemini(input_system, input_user, examples):
+    """Build Gemini-style user/model messages."""
     input_system = f"{input_system}\n\nInput:\n"
     if len(examples) > 0:
         formatted_input = [
@@ -712,7 +747,7 @@ def get_formatted_chat_gemini(
     max_token_input,
     times_word_token=4,
     num_token_reserve=5,
-    examples=[],
+    examples=None,
 ):
     """
     Format input for Gemini models, supporting examples and length truncation.
@@ -733,6 +768,8 @@ def get_formatted_chat_gemini(
         Example_ids: A list of example IDs used in the formatted input.
         formatted_input: A formatted input string for 'user_assistant' models.
     """
+
+    examples = examples or []
 
     # Step 1: Rough token estimation (not exact, but a starting point)
     initial_estimated_token_count = estimate_token_rough(
@@ -769,7 +806,7 @@ def get_formatted_chat_gemini(
     remaining_tokens = max_token_input - base_token_count - num_token_reserve
 
     examples_included = []
-    for idx_example, ex in enumerate(examples):
+    for ex in examples:
         chat_example = [
             {"role": "user", "parts": [{"text": "Input:\n" + ex["input"]}]},
             {"role": "model", "parts": [{"text": ex["output"]}]},
@@ -793,25 +830,16 @@ def get_formatted_chat_gemini(
 
 
 def format_message_deepseek(input_system, input_user, examples):
-    input_system = f"{input_system}\n\nInput:\n"
-    if len(examples) > 0:
-        formatted_input = [
-            {
-                "role": "user",
-                "text": input_system + examples[0]["input"],
-            },
-            {"role": "assistant", "text": examples[0]["output"]},
-        ]
-        for ex in examples[1:]:
-            formatted_input.extend(
-                [
-                    {"role": "user", "text": f"Input:\n{ex['input']}"},
-                    {"role": "assistant", "text": ex["output"]},
-                ]
-            )
-        formatted_input.append({"role": "user", "text": f"Input:\n{input_user}"})
-    else:
-        formatted_input = [{"role": "user", "text": input_system + input_user}]
+    """Build DeepSeek batch messages in system/user/assistant order."""
+    formatted_input = [{"role": "system", "text": input_system}]
+    for ex in examples:
+        formatted_input.extend(
+            [
+                {"role": "user", "text": ex["input"]},
+                {"role": "assistant", "text": ex["output"]},
+            ]
+        )
+    formatted_input.append({"role": "user", "text": input_user})
     example_ids = [ex["id"] for ex in examples] if examples else []
     return example_ids, formatted_input
 
@@ -824,12 +852,12 @@ def get_formatted_chat_deepseek(
     max_token_input,
     times_word_token=4,
     num_token_reserve=5,
-    examples=[],
+    examples=None,
 ):
     """
     Format input for DeepSeek models, supporting examples and length truncation.
-    Unlike general format, this format integrates the system prompt into the user's role content and follows the DeepSeek style
-    and prefixes user inputs with "Input:\n".
+    Message order is system instruction, optional user/assistant examples, then
+    the final user input.
 
     Args:
         tokenizer: The tokenizer object for processing text.
@@ -845,6 +873,8 @@ def get_formatted_chat_deepseek(
         Example_ids: A list of example IDs used in the formatted input.
         formatted_input: A formatted input string for 'user_assistant' models.
     """
+
+    examples = examples or []
 
     # Step 1: Rough token estimation (not exact, but a starting point)
     initial_estimated_token_count = estimate_token_rough(
@@ -881,237 +911,9 @@ def get_formatted_chat_deepseek(
     remaining_tokens = max_token_input - base_token_count - num_token_reserve
 
     examples_included = []
-    for idx_example, ex in enumerate(examples):
+    for ex in examples:
         chat_example = [
-            {"role": "user", "text": "Input:\n" + ex["input"]},
-            {"role": "assistant", "text": ex["output"]},
-        ]
-        # Tokenize to check if we can fit this example within remaining tokens
-        ex_token_count = num_tokens_from_messages_deepseek(chat_example, tokenizer)
-
-        # If we have enough room for this example, add it to the list
-        if ex_token_count < remaining_tokens:
-            examples_included.append(ex)
-            remaining_tokens -= ex_token_count
-        else:
-            break
-
-    # Step 5: Combine all parts: system, examples, user
-    example_ids, formatted_input = format_message_deepseek(
-        input_system, input_user, examples_included
-    )
-
-    return example_ids, formatted_input
-
-
-def format_message_gemini(input_system, input_user, examples):
-    input_system = f"{input_system}\n\nInput:\n"
-    if len(examples) > 0:
-        formatted_input = [
-            {
-                "role": "user",
-                "parts": [{"text": input_system + examples[0]["input"]}],
-            },
-            {"role": "model", "parts": [{"text": examples[0]["output"]}]},
-        ]
-        for ex in examples[1:]:
-            formatted_input.extend(
-                [
-                    {"role": "user", "parts": [{"text": f"Input:\n{ex['input']}"}]},
-                    {"role": "model", "parts": [{"text": ex["output"]}]},
-                ]
-            )
-        formatted_input.append(
-            {"role": "user", "parts": [{"text": f"Input:\n{input_user}"}]}
-        )
-    else:
-        formatted_input = [
-            {"role": "user", "parts": [{"text": input_system + input_user}]}
-        ]
-    example_ids = [ex["id"] for ex in examples] if examples else []
-    return example_ids, formatted_input
-
-
-def get_formatted_chat_gemini(
-    tokenizer,
-    language,
-    input_system,
-    input_user,
-    max_token_input,
-    times_word_token=4,
-    num_token_reserve=5,
-    examples=[],
-):
-    """
-    Format input for Gemini models, supporting examples and length truncation.
-    Unlike general format, this format integrates the system prompt into the user's role content and follows the Gemini style
-    and prefixes user inputs with "Input:\n".
-
-    Args:
-        tokenizer: The tokenizer object for processing text.
-        language (str): The language of the input, used for rough token estimation.
-        input_system (str): System instruction.
-        input_user (str): User input query.
-        max_token_input (int): Maximum token limit for the input.
-        times_word_token (int): The factor for rough token calculation.
-        num_token_reserve (int): Tokens to reserve for response generation.
-        examples (list): Optional list of examples, each a dict with "input" and "output".
-
-    Returns:
-        Example_ids: A list of example IDs used in the formatted input.
-        formatted_input: A formatted input string for 'user_assistant' models.
-    """
-
-    # Step 1: Rough token estimation (not exact, but a starting point)
-    initial_estimated_token_count = estimate_token_rough(
-        input_system, input_user, language, times_word_token, examples
-    )
-
-    # If the rough token count is within the limit, no truncation is needed
-    if initial_estimated_token_count <= max_token_input:
-        example_ids, formatted_input = format_message_gemini(
-            input_system, input_user, examples
-        )
-        return example_ids, formatted_input
-
-    # Step 2: Handle truncation when exceeding token limit
-    # Prepare a base template to estimate how many tokens system and minimal structure consumes
-    _, base_template = format_message_gemini(input_system, input_user, [])
-    base_token_count = num_tokens_from_messages_gemini(base_template, tokenizer)
-
-    # Step 3: Truncate user input first to fit into remaining tokens
-    if base_token_count > max_token_input:
-        # Calculate how many tokens we have left for user
-        remain_for_user = (
-            max_token_input
-            - (base_token_count - tokenizer.count_tokens(input_user).total_tokens)
-            - num_token_reserve
-        )
-        # Truncate user input first to fit into remaining tokens
-        input_user = get_truncate_text_gemini(input_user, tokenizer, remain_for_user)
-
-        # Construct the chat sequence without examples
-        return format_message_gemini(input_system, input_user, [])
-
-    # Step 4: Gradually add examples if there's space left
-    remaining_tokens = max_token_input - base_token_count - num_token_reserve
-
-    examples_included = []
-    for idx_example, ex in enumerate(examples):
-        chat_example = [
-            {"role": "user", "parts": [{"text": "Input:\n" + ex["input"]}]},
-            {"role": "model", "parts": [{"text": ex["output"]}]},
-        ]
-        # Tokenize to check if we can fit this example within remaining tokens
-        ex_token_count = num_tokens_from_messages_gemini(chat_example, tokenizer)
-
-        # If we have enough room for this example, add it to the list
-        if ex_token_count < remaining_tokens:
-            examples_included.append(ex)
-            remaining_tokens -= ex_token_count
-        else:
-            break
-
-    # Step 5: Combine all parts: system, examples, user
-    example_ids, formatted_input = format_message_gemini(
-        input_system, input_user, examples_included
-    )
-
-    return example_ids, formatted_input
-
-
-def format_message_deepseek(input_system, input_user, examples):
-    input_system = f"{input_system}\n\nInput:\n"
-    if len(examples) > 0:
-        formatted_input = [
-            {
-                "role": "user",
-                "text": input_system + examples[0]["input"],
-            },
-            {"role": "assistant", "text": examples[0]["output"]},
-        ]
-        for ex in examples[1:]:
-            formatted_input.extend(
-                [
-                    {"role": "user", "text": f"Input:\n{ex['input']}"},
-                    {"role": "assistant", "text": ex["output"]},
-                ]
-            )
-        formatted_input.append({"role": "user", "text": f"Input:\n{input_user}"})
-    else:
-        formatted_input = [{"role": "user", "text": input_system + input_user}]
-    example_ids = [ex["id"] for ex in examples] if examples else []
-    return example_ids, formatted_input
-
-
-def get_formatted_chat_deepseek(
-    tokenizer,
-    language,
-    input_system,
-    input_user,
-    max_token_input,
-    times_word_token=4,
-    num_token_reserve=5,
-    examples=[],
-):
-    """
-    Format input for DeepSeek models, supporting examples and length truncation.
-    Unlike general format, this format integrates the system prompt into the user's role content and follows the DeepSeek style
-    and prefixes user inputs with "Input:\n".
-
-    Args:
-        tokenizer: The tokenizer object for processing text.
-        language (str): The language of the input, used for rough token estimation.
-        input_system (str): System instruction.
-        input_user (str): User input query.
-        max_token_input (int): Maximum token limit for the input.
-        times_word_token (int): The factor for rough token calculation.
-        num_token_reserve (int): Tokens to reserve for response generation.
-        examples (list): Optional list of examples, each a dict with "input" and "output".
-
-    Returns:
-        Example_ids: A list of example IDs used in the formatted input.
-        formatted_input: A formatted input string for 'user_assistant' models.
-    """
-
-    # Step 1: Rough token estimation (not exact, but a starting point)
-    initial_estimated_token_count = estimate_token_rough(
-        input_system, input_user, language, times_word_token, examples
-    )
-
-    # If the rough token count is within the limit, no truncation is needed
-    if initial_estimated_token_count <= max_token_input:
-        example_ids, formatted_input = format_message_deepseek(
-            input_system, input_user, examples
-        )
-        return example_ids, formatted_input
-
-    # Step 2: Handle truncation when exceeding token limit
-    # Prepare a base template to estimate how many tokens system and minimal structure consumes
-    _, base_template = format_message_deepseek(input_system, input_user, [])
-    base_token_count = num_tokens_from_messages_deepseek(base_template, tokenizer)
-
-    # Step 3: Truncate user input first to fit into remaining tokens
-    if base_token_count > max_token_input:
-        # Calculate how many tokens we have left for user
-        remain_for_user = (
-            max_token_input
-            - (base_token_count - len(tokenizer.encode(input_user)))
-            - num_token_reserve
-        )
-        # Truncate user input first to fit into remaining tokens
-        input_user = get_truncate_text_deepseek(input_user, tokenizer, remain_for_user)
-
-        # Construct the chat sequence without examples
-        return format_message_deepseek(input_system, input_user, [])
-
-    # Step 4: Gradually add examples if there's space left
-    remaining_tokens = max_token_input - base_token_count - num_token_reserve
-
-    examples_included = []
-    for idx_example, ex in enumerate(examples):
-        chat_example = [
-            {"role": "user", "text": "Input:\n" + ex["input"]},
+            {"role": "user", "text": ex["input"]},
             {"role": "assistant", "text": ex["output"]},
         ]
         # Tokenize to check if we can fit this example within remaining tokens
