@@ -12,6 +12,10 @@
 
 ## 📢 Updates
 
+- 🗓️ **2026/07/29**: Unified local/API inference artifacts, added optional
+  vLLM logits and label-probability capture, exact post-truncation input and
+  few-shot ID recording, append-only resumable checkpoints, reproducibility
+  metadata, and refreshed inference/evaluation notebooks.
 - 🗓️ **2026/04/08**: We continue to evaluate the latest models. BRIDGE Leaderboard now includes **107** evaluated models.
 - 🗓️ **2025/06/03**: Updated the leaderboard with 21 additional models, for 75 evaluated models in total.
 - 🗓️ **2025/04/28**: BRIDGE Leaderboard V1.0.0 is now live with 54 evaluated models.
@@ -37,6 +41,7 @@ Real API keys and local checkpoint paths are intentionally not committed. Create
 local files from the templates:
 
 ```bash
+cp configs/BRIDGE.example.yaml configs/BRIDGE.yaml
 cp configs/API.key.example.yaml configs/API.key.yaml
 cp configs/dict_model_path.example.json configs/dict_model_path.json
 ```
@@ -67,16 +72,47 @@ Results are saved as:
 
 ```text
 result/<task_name>/<model_name>/<task_name>-<prompt_mode>-<decoding>-<seed>.result.json
+result/<task_name>/<model_name>/<task_name>-<prompt_mode>-<decoding>-<seed>.result.config.yaml
+result/<task_name>/<model_name>/<task_name>-<prompt_mode>-<decoding>-<seed>.result.metadata.json
 ```
+
+The result row stores the input actually sent to inference: local runs keep the
+post-truncation patient text in `input`, while API runs keep the exact formatted
+messages. `example` records only the few-shot IDs that actually fit in the
+context window. The adjacent config snapshot and metadata manifest capture the
+effective settings, file hashes, Git state, and runtime versions.
+
+For long vLLM runs, `save_every_n_batches` appends new rows to
+`*.result.partial.jsonl`. Set `resume_partial_results: true` to resume an
+interrupted exact prefix; the checkpoint is removed after the final result is
+written successfully.
+
+To capture vLLM generation traces or task label probabilities, keep the regular
+run config and add the optional logits config:
+
+```bash
+python main.py \
+  --model_name gpt-oss-20b \
+  --config configs/BRIDGE.yaml \
+  --logits_config configs/logits.example.yaml
+```
+
+Without `--logits_config`, logits capture is disabled.
 
 ### 4. Evaluate Results
 
-Evaluation is configured separately from inference through
-`evaluation/evaluate_BRIDGE.yaml`:
+Evaluation is configured separately from inference. Built-in BRIDGE tasks use
+`evaluation/evaluate.BRIDGE.yaml`:
 
 ```bash
 python -m evaluation.bridge
-python -m evaluation.bridge --config evaluation/evaluate_BRIDGE.yaml
+python -m evaluation.bridge --config evaluation/evaluate.BRIDGE.yaml
+```
+
+Project-specific tasks use the separate task entry point:
+
+```bash
+python -m evaluation.task --config evaluation/evaluate.task.yaml
 ```
 
 Set models, prompt modes, task types, and task subsets in the YAML file. The
@@ -84,18 +120,39 @@ evaluation code warns when a result file does not align with the expected task
 rows, which supports partial sampling runs while keeping data-integrity issues
 visible.
 
-### 5. More Documentation
+### 5. Run Commercial API Inference
+
+Commercial API inference uses the unified `run_API.sh` entry point. Models,
+tasks, provider parameters, and optional automatic evaluation are read from YAML:
+
+```bash
+bash run_API.sh
+bash run_API.sh --provider azure --config configs/API.provider.azure.yaml --model gpt-4o --foreground
+bash run_API.sh --dry-run
+```
+
+Azure OpenAI, Claude, and Gemini write the same result JSON format as local
+inference, so the evaluation workflow is shared. Request/response traces are
+stored under each model result directory in `api_trace/` unless disabled in YAML.
+API config snapshots are automatically redacted.
+See `configs/API_USAGE.md` for the detailed API workflow.
+
+### 6. More Documentation
 
 - `USAGE.md`: detailed runtime, data, inference, and evaluation guide.
+- `configs/API_USAGE.md`: commercial API inference, trace, batch, and evaluation guide.
+- `configs/README.result.md`: ordinary local/API result JSON format.
+- `configs/README.result.logits.md`: logits/probability sidecar result format.
 - `configs/README.md`: runtime config templates and local-only config paths.
+- `configs/README.logits.md`: logits YAML parameter reference.
 - `scripts/README.md`: single-model, multi-model, and delayed launch scripts.
 - `notebooks/README.md`: interactive notebook examples.
 - `dataset/README.md`: task data loading and prompt setup.
-- `model/README.md`: local inference and provider batch helpers.
+- `model/README.md`: local inference, logits, metadata, and unified API internals.
 - `evaluation/README.md`: maintained evaluation entry point and YAML examples.
 - `tests/README.md`: lightweight regression tests.
 
-### 6. Update the Leaderboard
+### 7. Update the Leaderboard
 
 To submit model results to [BRIDGE Leaderboard](https://huggingface.co/spaces/YLab-Open/BRIDGE-Medical-Leaderboard), send the generated `result` folder to the maintainers. We will update the leaderboard regularly and notify you when results are added.
 

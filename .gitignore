@@ -15,6 +15,7 @@
 # local-only configuration
 API.key.yaml
 dict_model_path.json
+configs/BRIDGE.yaml
 configs/API.key.yaml
 configs/dict_model_path.json
 

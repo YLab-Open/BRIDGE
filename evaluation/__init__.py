@@ -1,1 +1,1 @@
-"""BRIDGE evaluation helpers and command-line entry points."""
+"""Clinical task evaluation helpers and command-line entry points."""

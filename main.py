@@ -1,10 +1,11 @@
-import os
 import argparse
 import datetime
-import setproctitle
+import os
 from pathlib import Path
 
-from util.tool import init_logger
+import setproctitle
+
+from util.logging import init_logger
 from util.runtime import (
     get_task_dataloader,
     load_yaml_config,
@@ -13,7 +14,7 @@ from util.runtime import (
     normalize_runtime_args,
     validate_args,
 )
-
+from util.seed import seed_inference
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -48,6 +49,12 @@ if __name__ == "__main__":
         default="configs/BRIDGE.yaml",
         help="Path to a YAML config file containing tasks, exp_configs, and other arguments.",
     )
+    parser.add_argument(
+        "--logits_config",
+        type=str,
+        default=None,
+        help="Optional YAML config for synchronous logits/probability capture.",
+    )
 
     args = parser.parse_args()
 
@@ -58,9 +65,17 @@ if __name__ == "__main__":
     normalize_runtime_args(args)
 
     from dataset.dataset import GeneralTask
-    from model.init import seed_everything
+    from model.inference import (
+        remove_partial_result,
+        run_hf,
+        run_vllm,
+        save_result,
+    )
     from model.init import init_model
-    from model.inference import run_hf, run_vllm, save_result
+    from model.logits import configure_logits_from_args, logit_output_paths
+    from model.metadata import write_result_metadata
+
+    configure_logits_from_args(args)
 
     # ---------- Experiment config ----------
     args.tasks.sort()
@@ -94,6 +109,7 @@ if __name__ == "__main__":
 
         # Initialize the task and dataset
         task = GeneralTask(args=args, task_name=task_name)
+        args.task_data_path = task.path_file_data
 
         # Define the directory for the result
         args.path_dir_result = Path(args.dir_result_save) / task_name / args.model_name
@@ -133,8 +149,8 @@ if __name__ == "__main__":
             logger.info(f"DataLoader size: {len(dataloader)} batches")
 
             # Set the seed
-            args.seed = seed
-            seed_everything(args.seed)
+            args.seed = seed_inference(seed)
+            logger.info(f"Inference seed: {args.seed}")
 
             # Set the decoding parameters
             args.decoding_strategy = decoding_strategy.lower()
@@ -154,6 +170,11 @@ if __name__ == "__main__":
 
             # Log the experiment name
             logger.info(f"Name of experiment: {args.name_exp}")
+            if getattr(args, "logits_enabled", False):
+                logit_paths = logit_output_paths(args.path_file_result)
+                logger.info(f"Result path: {args.path_file_result}")
+                logger.info(f"Logit sidecar path: {logit_paths['logit_json']}")
+                logger.info(f"Metadata path: {logit_paths['metadata']}")
 
             # Run: inference
             if args.engine == "vllm":
@@ -163,7 +184,12 @@ if __name__ == "__main__":
                     dataset=dataset,
                     dataloader=dataloader,
                     model=model,
+                    tokenizer=tokenizer,
                 )
+                list_generation = None
+                list_logit = None
+                if isinstance(list_response, tuple):
+                    list_response, list_generation, list_logit = list_response
             else:
                 list_response = run_hf(
                     args=args,
@@ -172,15 +198,64 @@ if __name__ == "__main__":
                     model=model,
                     tokenizer=tokenizer,
                 )
+                list_generation = None
+                list_logit = None
 
             # Save results
+            logit_paths = logit_output_paths(args.path_file_result)
             save_result(
                 logger=logger,
                 dataset=dataset,
                 list_response=list_response,
                 path_file_save=args.path_file_result,
                 save_input=args.save_input,
+                list_generation=list_generation,
+                list_logit=list_logit,
+                path_file_logit_save=logit_paths["logit_json"],
             )
+            remove_partial_result(args.path_file_result)
+            effective_config = {
+                key: value
+                for key, value in vars(args).items()
+                if not key.startswith("_") and not callable(value)
+            }
+            metadata_paths = write_result_metadata(
+                result_path=args.path_file_result,
+                run_type=f"local_{args.engine}",
+                n_records=len(list_response),
+                effective_config=effective_config,
+                source_files={
+                    "main_config": args.config,
+                    "logits_config": getattr(args, "logits_config", None),
+                    "model_registry": args.model_file,
+                    "task_data": args.task_data_path,
+                },
+                related_files={
+                    "log": args.path_file_log,
+                    "logit": (
+                        logit_paths["logit_json"]
+                        if list_generation is not None or list_logit is not None
+                        else None
+                    ),
+                    "top_logits": (
+                        logit_paths["top_logits"]
+                        if getattr(args, "logits_enabled", False)
+                        else None
+                    ),
+                },
+                experiment={
+                    "model_name": args.model_name,
+                    "model_path": args.model_path,
+                    "task_name": task_name,
+                    "prompt_mode": prompt_mode,
+                    "decoding_strategy": args.decoding_strategy,
+                    "seed": args.seed,
+                    "split": args.mode,
+                },
+                extra={"logits": getattr(args, "logits", {})},
+            )
+            logger.info(f"Metadata path: {metadata_paths['metadata']}")
+            logger.info(f"Config snapshot: {metadata_paths['config']}")
 
             logger.info(f"Finished: {args.name_exp}")
             logger.info("\n" + "=" * 50 + "\n")

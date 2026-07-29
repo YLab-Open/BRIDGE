@@ -1,0 +1,65 @@
+# Gemini API run config for BRIDGE.
+#
+# Run one model:
+#   bash run_API.sh --provider gemini --model gemini-2.5-pro --config configs/API.provider.gemini.yaml --foreground
+#
+# Parameter support notes:
+#   - `generation_config.temperature: 0` requests greedy decoding when supported.
+#   - Gemini thinking controls live in `thinking_config`.
+#   - Gemini 3 models use `thinking_level`; Gemini 2.5 models can use
+#     `thinking_budget`. The runner skips thinking_budget for Gemini 3 when a
+#     thinking_level is present.
+
+provider: gemini
+
+mode: test
+experiments:
+  - [direct, greedy, 42]
+
+models:
+  - gemini-2.5-pro
+
+api:
+  api_key_env: GEMINI_API_KEY
+  timeout: 900
+  sdk_max_retries: 2
+  connection_retries: 1
+  single_parallel_workers: 4
+
+max_token_input: 1024*64
+max_token_output: 1024*16
+
+generation_config:
+  temperature: 0
+  top_p: 1
+  max_output_tokens: 16384
+
+thinking_config:
+  thinking_level: high
+  thinking_budget: -1
+  include_thoughts: true
+
+save_input: true
+save_trace: true
+save_raw_response: false
+allow_partial: false
+evaluate_on_partial: false
+require_model_registered: true
+evaluate_after_run: true
+bootstrap: 1000
+evaluation_seed: 42
+sample_eval_index: 0
+print_summary: true
+dir_performance: performance
+task_types:
+  - clf
+
+custom_tasks: {}
+
+dir_dataset:
+  - dataset_raw
+dir_result:
+  - result
+
+tasks:
+  - BrainMRI-AIS

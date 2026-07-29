@@ -4,7 +4,6 @@ from pathlib import Path
 
 import yaml
 
-
 PROMPT_MODE_PATTERN = re.compile(r"^(direct|cot)(?:-([1-9]\d*)-shot)?$")
 
 
@@ -62,6 +61,27 @@ def parse_prompt_mode(prompt_mode: str) -> tuple[str, int | None]:
         )
     prompt_base, num_example = match.groups()
     return prompt_base, int(num_example) if num_example is not None else None
+
+
+def normalize_experiments(experiments) -> list[list[object]]:
+    """
+    Normalize experiment tuples/lists into [prompt_mode, decoding_strategy, seed].
+
+    YAML usually parses numeric seeds as integers, but quoted seeds remain
+    strings. vLLM requires SamplingParams.seed to be int or None, so normalize it
+    before the inference loop attaches it to args.
+    """
+    normalized = []
+    for idx, item in enumerate(experiments):
+        if not isinstance(item, (list, tuple)) or len(item) != 3:
+            raise ValueError(
+                f"experiments[{idx}] must be [prompt_mode, decoding_strategy, seed]."
+            )
+        prompt_mode, decoding_strategy, seed = item
+        normalized.append(
+            [str(prompt_mode).strip(), str(decoding_strategy).lower(), int(seed)]
+        )
+    return normalized
 
 
 class UniqueKeyLoader(yaml.SafeLoader):
@@ -176,6 +196,9 @@ def validate_args(args):
 
     if int(args.batch_size) <= 0:
         raise ValueError("batch_size must be a positive integer.")
+    if hasattr(args, "num_workers") and args.num_workers is not None:
+        if int(args.num_workers) < 0:
+            raise ValueError("num_workers must be zero or a positive integer.")
 
     if hasattr(args, "save_every_n_batches") and args.save_every_n_batches is not None:
         if int(args.save_every_n_batches) <= 0:
@@ -195,12 +218,19 @@ def validate_args(args):
 
 
 def normalize_runtime_args(args):
-    """Normalize path, GPU, and worker-count values after config validation."""
+    """Normalize path, GPU, experiment, and worker-count values after validation."""
     args.gpus = parse_gpu_list(args.gpus)
-    args.num_workers = len(args.gpus) * 2
+    configured_workers = getattr(args, "num_workers", None)
+    args.num_workers = (
+        len(args.gpus) * 2
+        if configured_workers is None
+        else int(configured_workers)
+    )
     args.dir_dataset = parse_path_list(args.dir_dataset, "dir_dataset")
     args.dir_result = parse_path_list(args.dir_result, "dir_result")
     args.dir_result_save = args.dir_result[0]
+    if hasattr(args, "experiments"):
+        args.experiments = normalize_experiments(args.experiments)
     return args
 
 

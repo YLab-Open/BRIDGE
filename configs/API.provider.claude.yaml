@@ -1,0 +1,61 @@
+# Claude API run config for BRIDGE.
+#
+# Run one model:
+#   bash run_API.sh --provider claude --model claude-sonnet-4-5 --config configs/API.provider.claude.yaml --foreground
+#
+# Parameter support notes:
+#   - Claude Messages uses `params.max_tokens` as output budget.
+#   - Extended thinking uses `params.thinking`.
+#   - Some Claude 4.5+ models reject explicit temperature, and thinking requires
+#     temperature=1, so temperature is intentionally omitted by default.
+
+provider: claude
+
+mode: test
+experiments:
+  - [direct, greedy, 42]
+
+models:
+  - claude-sonnet-4-5
+
+api:
+  api_key_env: ANTHROPIC_API_KEY
+  timeout: 900
+  sdk_max_retries: 2
+  connection_retries: 1
+  single_parallel_workers: 4
+  stream: true
+
+max_token_input: 1024*64
+max_token_output: 1024*16
+
+params:
+  max_tokens: 16384
+  thinking:
+    type: enabled
+    budget_tokens: 8000
+
+save_input: true
+save_trace: true
+save_raw_response: false
+allow_partial: false
+evaluate_on_partial: false
+require_model_registered: true
+evaluate_after_run: true
+bootstrap: 1000
+evaluation_seed: 42
+sample_eval_index: 0
+print_summary: true
+dir_performance: performance
+task_types:
+  - clf
+
+custom_tasks: {}
+
+dir_dataset:
+  - dataset_raw
+dir_result:
+  - result
+
+tasks:
+  - BrainMRI-AIS

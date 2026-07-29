@@ -1,14 +1,16 @@
-import regex
 import numpy as np
+import regex
 
-# import self-defined modules
-from .dataset import GeneralEvaluation
-from .config import get_pred_none_ext
-from .process import process_pred, extract_pred
 from metric.extraction import (
     calc_metrics_ext,
     ext_compute_overall_metrics,
 )
+
+from .config import get_pred_none_ext
+
+# import self-defined modules
+from .dataset import GeneralEvaluation
+from .process import extract_pred, process_pred
 
 
 class Task_ext(GeneralEvaluation):
@@ -48,9 +50,9 @@ class Task_ext(GeneralEvaluation):
                 for idx, field_subject in enumerate(self.list_field_subject):
                     try:
                         dict_entity[field_subject] = result.group(idx + 1).strip()
-                    except:
+                    except Exception as exc:
                         print(line_one)
-                        raise ValueError("Error in get_label")
+                        raise ValueError("Error in get_label") from exc
                 # Extract the features
                 for idx, field_feature in enumerate(self.list_field_feature):
                     dict_entity[field_feature] = result.group(
@@ -68,7 +70,7 @@ class Task_ext(GeneralEvaluation):
     def get_pred(self, list_dict_data, prompt_mode="direct"):
         """Parse model outputs into extraction record dictionaries."""
         list_list_dict_entity = []
-        for idx_data, dict_data in enumerate(list_dict_data):
+        for dict_data in list_dict_data:
             list_dict_entity = []
             if dict_data["pred"].strip() != "":
                 response = process_pred(
@@ -512,7 +514,7 @@ class Task_ext_n2c2_2018_Track2_Adverse_Drug_Events_and_Medication_Extraction(Ta
 
     def get_pred(self, list_dict_data, prompt_mode="direct"):
         list_list_dict_entity = []
-        for idx_data, dict_data in enumerate(list_dict_data):
+        for dict_data in list_dict_data:
             list_dict_entity = []
             if dict_data["pred"].strip() != "":
                 # Split the response by event
@@ -960,3 +962,156 @@ class Task_ext_Medication(Task_ext):
             r"medication: (.+), status: (.+);",
             r".*:\s*(.+),\s*.*:\s*([^;]+)",
         ]
+
+
+class Task_ext_Medication_format(Task_ext_Medication):
+    def __init__(self, args, task):
+        super().__init__(args, task)
+
+        status = r"(active|discontinued|neither|prn)"
+        prefix = r"\s*(?:[-*\u2022]\s*)?(?:\d+[\).]\s*)?"
+        self.list_pattern = [
+            rf"{prefix}medication\s*[:=-]\s*(.+?),\s*status\s*[:=-]\s*([^,;\n]{{1,80}})\s*;?",
+            rf"{prefix}(.+?)\s*:\s*.*?,\s*status\s*[:=-]\s*([^,;\n]{{1,80}})\s*;?\s*$",
+            rf"{prefix}(.+?),\s*status\s*[:=-]\s*([^,;\n]{{1,80}})\s*;?\s*$",
+            rf"{prefix}(.+?)\s*:\s*{status}\s*;?\s*$",
+        ]
+        self.max_parse_line_chars = 400
+        self._known_status_tail_pattern = regex.compile(
+            rf"\b{status}\b\s*[\.;]?\s*$",
+            regex.IGNORECASE,
+        )
+        self._pred_patterns = [
+            regex.compile(
+                rf"^{prefix}medication\s*[:=-]\s*"
+                rf"(?P<medication>[^;\n]{{1,260}}?)\s*,\s*"
+                rf"status\s*[:=-]\s*(?P<status>[^,;\n]{{1,80}})\s*[\.;]?\s*$",
+                regex.IGNORECASE,
+            ),
+            regex.compile(
+                rf"^{prefix}(?P<medication>[^:;\n]{{1,220}}?)\s*:\s*"
+                rf"[^;\n]{{0,160}}?,\s*status\s*[:=-]\s*"
+                rf"(?P<status>[^,;\n]{{1,80}})\s*[\.;]?\s*$",
+                regex.IGNORECASE,
+            ),
+            regex.compile(
+                rf"^{prefix}(?P<medication>[^,;:\n]{{1,220}}?)\s*,\s*"
+                rf"status\s*[:=-]\s*(?P<status>[^,;\n]{{1,80}})\s*[\.;]?\s*$",
+                regex.IGNORECASE,
+            ),
+            regex.compile(
+                rf"^{prefix}(?P<medication>[^:;\n]{{1,220}}?)\s*:\s*"
+                rf"(?P<status>{status})\s*[\.;]?\s*$",
+                regex.IGNORECASE,
+            ),
+        ]
+
+    @staticmethod
+    def _clean_medication(value):
+        value = regex.sub(r"^\s*(?:[-*\u2022]\s*)?(?:\d+[\).]\s*)?", "", value)
+        value = value.strip(" \t\r\n;:,-\"'`")
+        value = regex.sub(r"^\*+|\*+$", "", value).strip()
+        value = regex.sub(r"\s+", " ", value)
+        return value
+
+    @staticmethod
+    def _is_invalid_medication(value):
+        return value in {"", "_", "__", "___", "...", "n/a", "na", "none"}
+
+    def _iter_candidate_lines(self, response):
+        for line in response.split(self.sep_event):
+            line = line.strip()
+            if not line:
+                continue
+            parts = line.split(";") if ";" in line else [line]
+            for part in parts:
+                part = part.strip()
+                if part:
+                    yield part
+
+    def _parse_pred_line(self, line):
+        if len(line) > self.max_parse_line_chars:
+            return None
+        if "status" not in line and not self._known_status_tail_pattern.search(line):
+            return None
+        if "," not in line and ":" not in line:
+            return None
+
+        for pattern in self._pred_patterns:
+            result = pattern.match(line)
+            if result is None:
+                continue
+
+            medication = self._clean_medication(result.group("medication"))
+            if self._is_invalid_medication(medication):
+                return None
+            return {
+                "medication": medication,
+                "status": result.group("status").strip(" \t\r\n.;:,-\"'`"),
+            }
+
+        return None
+
+    def _clean_parsed_medications(self, list_list_dict_entity):
+        list_list_dict_clean = []
+        for list_dict_entity in list_list_dict_entity:
+            if -1 in list_dict_entity:
+                list_list_dict_clean.append(list_dict_entity)
+                continue
+
+            list_dict_clean = []
+            seen_entity = set()
+            for dict_entity in list_dict_entity:
+                dict_entity = dict_entity.copy()
+                dict_entity["medication"] = self._clean_medication(
+                    dict_entity["medication"]
+                )
+                if self._is_invalid_medication(dict_entity["medication"]):
+                    continue
+                key_entity = (
+                    dict_entity["medication"],
+                    dict_entity.get("status", ""),
+                )
+                if key_entity in seen_entity:
+                    continue
+                seen_entity.add(key_entity)
+                list_dict_clean.append(dict_entity)
+
+            list_list_dict_clean.append(list_dict_clean if list_dict_clean else [-1])
+
+        return list_list_dict_clean
+
+    def get_label(self, list_dict_data, prompt_mode="direct"):
+        list_list_dict_entity = super().get_label(list_dict_data, prompt_mode)
+        return self._clean_parsed_medications(list_list_dict_entity)
+
+    def get_pred(self, list_dict_data, prompt_mode="direct"):
+        list_list_dict_entity = []
+        for dict_data in list_dict_data:
+            list_dict_entity = []
+            seen_line = set()
+            seen_entity = set()
+            if dict_data["pred"].strip() != "":
+                response = process_pred(
+                    dict_data["pred"], flag_lower=True, flag_punc_to_en=True
+                )
+                response = extract_pred(response, prompt_mode=prompt_mode)
+
+                for line in self._iter_candidate_lines(response):
+                    if line in seen_line:
+                        continue
+                    seen_line.add(line)
+                    dict_entity = self._parse_pred_line(line)
+                    if dict_entity is not None:
+                        key_entity = (
+                            dict_entity["medication"],
+                            dict_entity["status"],
+                        )
+                        if key_entity in seen_entity:
+                            continue
+                        seen_entity.add(key_entity)
+                        list_dict_entity.append(dict_entity)
+
+            list_list_dict_entity.append(list_dict_entity if list_dict_entity else [-1])
+
+        return list_list_dict_entity

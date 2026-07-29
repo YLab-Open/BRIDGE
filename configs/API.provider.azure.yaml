@@ -1,0 +1,85 @@
+# Azure OpenAI API run config for BRIDGE.
+#
+# Run one model:
+#   bash run_API.sh --provider azure --model gpt-5.4 --config configs/API.provider.azure.yaml --foreground
+#
+# Parameter support notes:
+#   - Reasoning/Responses models use `responses_params`; do not set temperature.
+#   - Chat models such as gpt-4o use `chat_params`; seed comes from experiments[*][2].
+#   - Batch is selected by configs/API.model.yaml. `use_batch: auto` means batch when
+#     support_batch=true, otherwise single-query mode.
+
+provider: azure
+
+mode: test
+experiments:
+  - [direct, greedy, 42]
+
+models:
+  - gpt-5.4
+  - gpt-5
+  # - gpt-4o
+
+# API behavior. Credentials can be set in configs/API.key.yaml or env vars:
+# AZURE_OPENAI_API_KEY and AZURE_OPENAI_ENDPOINT.
+api:
+  use_batch: auto
+  api_key_env: AZURE_OPENAI_API_KEY
+  endpoint_env: AZURE_OPENAI_ENDPOINT
+  api_version: 2025-04-01-preview
+  timeout: 900
+  sdk_max_retries: 2
+  connection_retries: 2
+  single_parallel_workers: 6
+  batch_completion_window: 24h
+  batch_poll_interval_seconds: 60
+  # 0 means wait until the Azure batch reaches a terminal status.
+  batch_max_wait_seconds: 0
+
+# Context and output budgets. Simple expressions like 1024*64 are supported.
+max_token_input: 1024*64
+max_token_output: 1024*16
+
+# Greedy decoding for Chat Completions models. The per-experiment seed comes
+# from experiments[*][2]. Reasoning models ignore temperature/top_p.
+chat_params:
+  temperature: 0
+  top_p: 1
+
+# Default reasoning settings for Responses API models.
+# summary=detailed is useful for traceability but may not be available on all
+# models/deployments; change to auto or remove if Azure rejects it.
+responses_params:
+  reasoning:
+    effort: medium
+    summary: detailed
+  text:
+    verbosity: medium
+
+save_input: true
+save_trace: true
+save_raw_response: false
+allow_partial: false
+evaluate_on_partial: false
+require_model_registered: true
+evaluate_after_run: true
+bootstrap: 1000
+evaluation_seed: 42
+sample_eval_index: 0
+print_summary: true
+dir_performance: performance
+task_types:
+  - clf
+
+# Optional non-default task registrations for evaluation. Keep BRIDGE tasks in
+# dataset/task.py; add project-specific tasks here so evaluation.runner can find
+# the metric/parser class without a separate evaluation script.
+custom_tasks: {}
+
+dir_dataset:
+  - dataset_raw
+dir_result:
+  - result
+
+tasks:
+  - BrainMRI-AIS

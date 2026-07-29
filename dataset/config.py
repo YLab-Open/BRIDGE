@@ -65,7 +65,7 @@ def transform_instruction_to_cot(instruction, flag_print=True):
             )
     if flag_print:
         print(
-            f"Warning: The instruction does not contain any of the Direct templates. Return None."
+            "Warning: The instruction does not contain any of the Direct templates. Return None."
         )
     return None
 
@@ -89,7 +89,7 @@ def transform_instruction_to_direct(instruction, flag_print=True):
             )
     if flag_print:
         print(
-            f"Warning: The instruction does not contain any of the CoT templates. Return None."
+            "Warning: The instruction does not contain any of the CoT templates. Return None."
         )
     return None
 
@@ -109,7 +109,7 @@ def get_instruction_cot_from_direct(instruction):
         if str_template_direct in instruction:
             return str_template_direct, str_template_cot
     print(
-        f"Warning: The instruction does not contain any of the Direct templates. Return None, None."
+        "Warning: The instruction does not contain any of the Direct templates. Return None, None."
     )
     return None, None
 
@@ -129,7 +129,7 @@ def get_instruction_direct_from_cot(instruction):
         if str_template_cot in instruction:
             return str_template_direct, str_template_cot
     print(
-        f"Warning: The instruction does not contain any of the CoT templates. Return None, None."
+        "Warning: The instruction does not contain any of the CoT templates. Return None, None."
     )
     return None, None
 
@@ -149,9 +149,11 @@ def get_metrics_clf():
     """Return default metrics printed for multi-class classification tasks."""
     return ["accuracy", "f1_macro", "f1_micro", "num_failed_ratio"]
 
+
 def get_metrics_clf_binary():
     """Return default metrics printed for binary classification tasks."""
     return ["accuracy", "f1_binary", "num_failed_ratio"]
+
 
 def get_metrics_gen():
     """Return default metrics printed for generation tasks."""
@@ -161,6 +163,11 @@ def get_metrics_gen():
 def get_metrics_ext():
     """Return default metrics printed for extraction tasks."""
     return ["f1_subject", "f1_event", "num_failed_ratio"]
+
+
+def get_metrics_ext_subject():
+    """Return subject-only metrics printed for extraction tasks."""
+    return ["precision_subject", "recall_subject", "f1_subject", "num_failed_ratio"]
 
 
 def get_metrics_ext_qa():

@@ -1,11 +1,12 @@
 import numpy as np
+from scipy.stats import pearsonr, spearmanr
 from sklearn.metrics import (
     accuracy_score,
-    precision_recall_fscore_support,
     cohen_kappa_score,
+    precision_recall_fscore_support,
 )
-from scipy.stats import pearsonr, spearmanr
-from dataset.config import get_models_evaluate, get_metrics_clf
+
+from dataset.config import get_metrics_clf, get_models_evaluate
 
 
 def calc_metrics_clf(list_pred, list_label, average=None):

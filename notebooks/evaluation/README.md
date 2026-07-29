@@ -5,7 +5,7 @@ maintained evaluation API.
 
 ## Files
 
-- `evaluate_classification.ipynb`: loads `evaluation/evaluate_BRIDGE.yaml`,
+- `evaluate_classification.ipynb`: loads `evaluation/evaluate.BRIDGE.yaml`,
   restricts evaluation to classification tasks, and shows result inventory.
 - `evaluate_extraction.ipynb`: same pattern for extraction tasks.
 - `evaluate_generation.ipynb`: same pattern for generation tasks. Generation
@@ -16,7 +16,8 @@ maintained evaluation API.
 Each notebook imports:
 
 ```python
-from evaluation.bridge import config_from_yaml, evaluate_all
+from evaluation.config import config_from_yaml
+from evaluation.runner import evaluate_all
 from evaluation.result_utils import collect_result_inventory
 ```
 

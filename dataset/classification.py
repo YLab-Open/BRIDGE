@@ -1,22 +1,25 @@
 import json
-import regex
-import numpy as np
 from multiprocessing import Pool
 
-# import self-defined modules
-from .dataset import GeneralEvaluation
+import numpy as np
+import regex
+
+from metric.classification import (
+    calc_metrics_clf,
+    calc_metrics_clf_mul_label,
+    compute_metrics_clf_mul_label,
+    get_arr_multi_hot,
+)
+
 from .config import (
     get_pred_none_clf,
     get_pred_none_clf_mul_label,
     get_pred_none_clf_mul_question,
 )
-from .process import process_pred, extract_pred
-from metric.classification import (
-    calc_metrics_clf,
-    get_arr_multi_hot,
-    calc_metrics_clf_mul_label,
-    compute_metrics_clf_mul_label,
-)
+
+# import self-defined modules
+from .dataset import GeneralEvaluation
+from .process import extract_pred, process_pred
 
 
 class Task_clf_binary(GeneralEvaluation):
@@ -361,7 +364,7 @@ class Task_clf_mul_question(GeneralEvaluation):
                 dict_data["output"], flag_lower=True, flag_punc_to_en=True
             )
             for string_label in string_label_all.split(self.sep_label):
-                for idx, (key, list_pattern) in enumerate(
+                for idx, (_, list_pattern) in enumerate(
                     self.dict_list_pattern.items()
                 ):
                     result_match = regex.search(
@@ -390,7 +393,7 @@ class Task_clf_mul_question(GeneralEvaluation):
             for line_one in response.split(self.sep_label):
                 # The flag indicates whether this response found the label
                 flag_found_line = False
-                for idx, (key, list_pattern) in enumerate(
+                for idx, (_, list_pattern) in enumerate(
                     self.dict_list_pattern.items()
                 ):
                     # If this label is found, break the loop

@@ -1,0 +1,32 @@
+# Example: evaluate a project-specific task with the standard evaluation entry.
+# Run:
+#   python -m evaluation.task --config evaluation/evaluate.task.example.yaml
+
+dir_dataset:
+  - dataset_project
+
+dir_result:
+  - result_project
+
+dir_performance: performance
+
+models:
+  - my-api-model
+
+prompt_modes:
+  - direct
+
+task_types:
+  - ext
+
+tasks:
+  - My-Clinical-Task
+
+custom_tasks:
+  ext:
+    My-Clinical-Task: my_project.tasks:Task_ext_MyClinicalTask
+
+bootstrap: 1000
+seed: 42
+sample_eval_index: 0
+print_summary: true

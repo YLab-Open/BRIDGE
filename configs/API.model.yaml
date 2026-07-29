@@ -1,0 +1,216 @@
+# Commercial API model capability registry.
+#
+# This file contains model/deployment metadata only. Put secrets in
+# configs/API.key.yaml or environment variables.
+#
+# Field meanings:
+#   deploy_name: provider-side deployment/model id used for single requests.
+#   batch_deploy_name: Azure deployment id used inside batch request bodies.
+#   support_reasoning: whether the model supports reasoning-specific params.
+#   support_batch: whether this Azure deployment can be submitted to Batch API.
+#     Keep this true only when `batch_deploy_name` exists in the Azure resource;
+#     `api.use_batch: auto` will otherwise try Batch and fail at runtime.
+#   mode: default single-query API mode for Azure: response or chat.
+#   batch_mode: default Azure batch request mode: response or chat.
+
+Azure:
+  gpt-5.6-terra:
+    deploy_name: gpt-5.6-terra
+    support_reasoning: true
+    support_batch: false
+    mode: response
+
+  gpt-5.6-luna:
+    deploy_name: gpt-5.6-luna
+    support_reasoning: true
+    support_batch: false
+    mode: response
+
+  gpt-5.6-sol:
+    deploy_name: gpt-5.6-sol
+    support_reasoning: true
+    support_batch: false
+    mode: response
+
+  gpt-5.5:
+    deploy_name: gpt-5.5
+    support_reasoning: true
+    support_batch: false
+    mode: response
+
+  gpt-5.4:
+    deploy_name: gpt-5.4
+    support_reasoning: true
+    batch_deploy_name: gpt-5.4-batch
+    support_batch: true
+    mode: response
+    batch_mode: response
+
+  gpt-5.4-pro:
+    deploy_name: gpt-5.4-pro
+    support_reasoning: true
+    support_batch: false
+    mode: response
+
+  gpt-5.4-mini:
+    deploy_name: gpt-5.4-mini
+    support_reasoning: true
+    support_batch: false
+    mode: response
+
+  gpt-5.4-nano:
+    deploy_name: gpt-5.4-nano
+    support_reasoning: true
+    support_batch: false
+    mode: response
+
+  gpt-5.2:
+    deploy_name: gpt-5.2
+    support_reasoning: true
+    support_batch: false
+    mode: response
+
+  gpt-5.1:
+    deploy_name: gpt-5.1
+    batch_deploy_name: gpt-5.1-batch
+    support_reasoning: true
+    support_batch: true
+    mode: response
+    batch_mode: response
+
+  gpt-5-pro:
+    deploy_name: gpt-5-pro
+    support_reasoning: true
+    support_batch: false
+    mode: response
+
+  gpt-5:
+    deploy_name: gpt-5
+    batch_deploy_name: gpt-5-batch
+    support_reasoning: true
+    support_batch: true
+    mode: response
+    batch_mode: response
+
+  gpt-5-mini:
+    deploy_name: gpt-5-mini
+    support_reasoning: true
+    support_batch: false
+    mode: response
+
+  gpt-5-nano:
+    deploy_name: gpt-5-nano
+    support_reasoning: true
+    support_batch: false
+    mode: response
+
+  o3-pro:
+    deploy_name: o3-pro
+    support_reasoning: true
+    support_batch: false
+    mode: response
+
+  o3:
+    deploy_name: o3
+    batch_deploy_name: o3-batch
+    support_reasoning: true
+    support_batch: true
+    mode: response
+    batch_mode: response
+
+  o4-mini:
+    deploy_name: o4-mini
+    support_reasoning: true
+    support_batch: false
+    mode: response
+
+  o3-mini:
+    deploy_name: o3-mini
+    support_reasoning: true
+    support_batch: false
+    mode: response
+
+  gpt-4o:
+    deploy_name: gpt-4o
+    batch_deploy_name: gpt-4o-batch
+    support_reasoning: false
+    support_batch: true
+    mode: chat
+    batch_mode: chat
+
+  gpt-4o-mini:
+    deploy_name: gpt-4o-mini
+    support_reasoning: false
+    support_batch: false
+    mode: chat
+
+# General-purpose text models supported by the Messages provider. Specialized
+# or restricted-access models are intentionally excluded.
+Claude:
+  claude-fable-5:
+    model_id: claude-fable-5
+    support_reasoning: true
+
+  claude-opus-4-8:
+    model_id: claude-opus-4-8
+    support_reasoning: true
+
+  claude-opus-4-7:
+    model_id: claude-opus-4-7
+    support_reasoning: true
+
+  claude-opus-4-6:
+    model_id: claude-opus-4-6
+    support_reasoning: true
+
+  claude-sonnet-5:
+    model_id: claude-sonnet-5
+    support_reasoning: true
+
+  claude-sonnet-4-6:
+    model_id: claude-sonnet-4-6
+    support_reasoning: true
+
+  claude-haiku-4-5:
+    model_id: claude-haiku-4-5-20251001
+    support_reasoning: true
+
+  # Keep short registry names, but call pinned snapshots for reproducibility.
+  claude-opus-4-5:
+    model_id: claude-opus-4-5-20251101
+    support_reasoning: true
+
+  claude-sonnet-4-5:
+    model_id: claude-sonnet-4-5-20250929
+    support_reasoning: true
+
+# General-purpose text-output models supported by generate_content. Live,
+# TTS, media-generation, embedding, and agent models are intentionally excluded.
+Gemini:
+  gemini-3.5-flash:
+    model_id: gemini-3.5-flash
+    support_reasoning: true
+
+  gemini-3.1-pro-preview:
+    model_id: gemini-3.1-pro-preview
+    support_reasoning: true
+
+  gemini-3-flash-preview:
+    model_id: gemini-3-flash-preview
+    support_reasoning: true
+
+  gemini-3.1-flash-lite:
+    model_id: gemini-3.1-flash-lite
+    support_reasoning: true
+
+  gemini-2.5-pro:
+    model_id: gemini-2.5-pro
+    support_reasoning: true
+
+  gemini-2.5-flash:
+    model_id: gemini-2.5-flash
+    support_reasoning: true
+
+  gemini-2.5-flash-lite:
+    model_id: gemini-2.5-flash-lite
+    support_reasoning: true

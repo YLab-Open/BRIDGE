@@ -1,11 +1,13 @@
-import regex
 import numpy as np
+import regex
+
+from metric.generation import calc_metrics_gen
+
+from .config import get_pred_none_gen, get_pred_none_gen_qa_mul
 
 # import self-defined modules
 from .dataset import GeneralEvaluation
-from .config import get_pred_none_gen, get_pred_none_gen_qa_mul
-from .process import process_pred, extract_pred
-from metric.generation import calc_metrics_gen
+from .process import extract_pred, process_pred
 
 
 class Task_gen(GeneralEvaluation):
@@ -34,12 +36,12 @@ class Task_gen(GeneralEvaluation):
                 label = process_pred(label, flag_lower=True, flag_punc_to_en=True)
             else:
                 label = [
-                    l.split(self.gen_prefix)[-1] if self.gen_prefix else l
-                    for l in dict_data["output_list"]
+                    reference.split(self.gen_prefix)[-1] if self.gen_prefix else reference
+                    for reference in dict_data["output_list"]
                 ]
                 label = [
-                    process_pred(l, flag_lower=True, flag_punc_to_en=True)
-                    for l in label
+                    process_pred(reference, flag_lower=True, flag_punc_to_en=True)
+                    for reference in label
                 ]
             list_label.append(label)
 
@@ -141,7 +143,7 @@ class Task_gen_extract(Task_gen):
     def get_pred(self, list_dict_data, prompt_mode="direct"):
         """Parse predicted short-answer strings."""
         list_pred = []
-        for idx_data, dict_data in enumerate(list_dict_data):
+        for dict_data in list_dict_data:
             if dict_data["pred"].strip() != "":
                 # Split the response by event
                 response = process_pred(
@@ -221,7 +223,7 @@ class Task_gen_extract_mul(Task_gen):
         """Parse predicted answers for each configured question."""
         list_list_pred = []
         num_question = len(self.list_question_pattern)
-        for idx_data, dict_data in enumerate(list_dict_data):
+        for dict_data in list_dict_data:
             list_answer = [-1] * num_question
             if dict_data["pred"].strip() != "":
                 response = process_pred(
@@ -303,7 +305,7 @@ class Task_gen_extract_mul(Task_gen):
             indices = np.random.choice(len(list_label), len(list_label), replace=True)
             # average the performance for all questions
             dict_performance = {}
-            for name_q, dict_metric_sample in dict_question_metric_sample.items():
+            for dict_metric_sample in dict_question_metric_sample.values():
                 for metric, list_metric_sample in dict_metric_sample.items():
                     list_metric_q = [list_metric_sample[i] for i in indices]
                     # Calculate the mean value of the metric for the question

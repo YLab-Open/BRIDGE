@@ -9,9 +9,11 @@ The core workflow is:
 1. Store benchmark data as `<task_name>.SFT.json`.
 2. Configure task names, data paths, result paths, prompt modes, decoding modes,
    token budgets, and runtime options in `configs/BRIDGE.yaml`.
-3. Run inference through `main.py`, `run.sh`, or `run_multiple_model.sh`.
+3. Run local inference through `main.py`, `run.sh`, or `run_multiple_model.sh`,
+   or commercial API inference through `run_API.sh`.
 4. Save standardized result JSON files under `<dir_result[0]>/<task>/<model>/`.
-5. Evaluate result files with `python -m evaluation.bridge`.
+5. Evaluate result files with `python -m evaluation.bridge` for BRIDGE tasks or
+   `python -m evaluation.task` for project-specific tasks.
 
 ## Runtime
 
@@ -67,6 +69,7 @@ path:
 Local machine-specific files are ignored by git. Start from the example files:
 
 ```bash
+cp configs/BRIDGE.example.yaml configs/BRIDGE.yaml
 cp configs/API.key.example.yaml configs/API.key.yaml
 cp configs/dict_model_path.example.json configs/dict_model_path.json
 ```
@@ -110,9 +113,15 @@ Important `configs/BRIDGE.yaml` fields:
 
 - `engine`: inference engine, `vllm` or `hf`.
 - `mode`: dataset split to run, one of `train`, `dev`, `test`, or `all`.
-- `experiments`: list of `[prompt_mode, decoding_strategy, seed]`.
+- `experiments`: list of `[prompt_mode, decoding_strategy, seed]`. The third
+  value is the local inference seed; it is normalized to an integer, assigned to
+  `args.seed`, and passed to vLLM `SamplingParams.seed` when using vLLM.
 - `batch_size`: number of formatted prompts submitted per dataloader batch.
-- `save_every_n_batches`: optional partial-save interval.
+- `num_workers`: optional prompt-formatting worker count. The default is twice
+  the number of configured GPUs; use `0` for small/debug runs to avoid process
+  startup overhead.
+- `save_every_n_batches`: optional append-only JSONL checkpoint interval.
+- `resume_partial_results`: resume a validated interrupted vLLM prefix.
 - `save_input`: whether to keep instruction/input metadata in result JSON.
 - `max_token_all`: full context window passed to vLLM as `max_model_len`.
 - `max_token_input`: prompt budget after formatting and truncation.
@@ -188,6 +197,30 @@ The main local path is:
 10. `model.inference.run_vllm()` or `run_hf()` generates model outputs.
 11. `model.inference.save_result()` validates result length and writes JSON.
 
+## Commercial API Inference
+
+Commercial API inference uses the same task files and writes the same result JSON
+format as local inference. The shell entry point is:
+
+```bash
+bash run_API.sh
+bash run_API.sh --provider azure --config configs/API.provider.azure.yaml --model gpt-4o --foreground
+bash run_API.sh --dry-run
+```
+
+The Python/notebook entry point is:
+
+```python
+from model.api_runner import run_api_from_config
+
+run = run_api_from_config("configs/API.provider.azure.yaml", model_name="gpt-4o")
+```
+
+Use `configs/API.model.yaml` for provider model metadata and
+`configs/API.key.yaml` or environment variables for credentials. See
+See `configs/API_USAGE.md` for the detailed Azure/Claude/Gemini workflow, trace
+files, batch polling, and automatic evaluation options.
+
 ## Result Format
 
 Inference saves:
@@ -196,8 +229,13 @@ Inference saves:
 <dir_result[0]>/<task_name>/<model_name>/<task_name>-<prompt_mode>-<decoding_strategy>-<seed>.result.json
 ```
 
-For `save_input: true`, each output row keeps the original sample fields and adds
-`pred`. For `save_input: false`, each row keeps only compact metadata:
+For `save_input: true`, each output row keeps the source metadata and adds
+`example` and `pred`. For local inference, `input` is replaced by only the
+current sample text retained after context truncation; `instruction` keeps the
+system prompt.
+`example` is the ordered list of few-shot example IDs that actually fit in the
+formatted context; it can contain fewer IDs than requested by the prompt mode.
+For `save_input: false`, each row keeps only compact metadata:
 
 ```json
 {
@@ -205,12 +243,76 @@ For `save_input: true`, each output row keeps the original sample fields and add
   "type": "classification",
   "language": "en",
   "output": "gold answer",
+  "example": ["example-1", "example-2", "example-3"],
   "pred": "model output"
 }
 ```
 
+For commercial API inference, `input` is the final formatted request-message
+list after context budgeting. Local requests can be reconstructed from
+`instruction`, truncated `input`, the examples referenced by `example`, and the
+same model tokenizer/chat template.
+
 `save_result()` raises an error if the number of predictions does not match the
 number of samples being saved.
+
+## Optional vLLM Logits Capture
+
+Local vLLM runs can synchronously save generated token ids and task-specific
+label probabilities without changing the standard result JSON. Use a separate
+logits YAML:
+
+```bash
+python main.py \
+  --model_name MyLocalModel \
+  --config configs/BRIDGE.yaml \
+  --logits_config configs/logits.example.yaml
+```
+
+Recommended layout:
+
+```yaml
+enabled: true
+generation_trace:
+  enabled: true
+  top_k_logprobs_for_all_output_tokens: 0
+label_probability:
+  enabled: true
+  mode: generation_logprobs
+  generation_logprobs_top_k: 5000
+  fallback_to_exact_probe: true
+  probe_batch_size: 64
+  top_k_logits: 1000
+  fail_on_error: true
+tasks:
+  MyTask:
+    answer_prefix: "Assessment:"
+    label_values: ["No", "Yes"]
+    label_groups:
+      negative: ["No"]
+      positive: ["Yes"]
+```
+
+The normal file remains:
+
+```text
+<result>/<task>/<model>/<task>-direct-greedy-42.result.json
+```
+
+Additional compact files are written next to it:
+
+```text
+<task>-direct-greedy-42.result.logit.json
+<task>-direct-greedy-42.result.logit.top_logits.jsonl.gz
+<task>-direct-greedy-42.result.metadata.json
+<task>-direct-greedy-42.result.config.yaml
+```
+
+`generation` records the actual generated token ids/texts. `logit` records
+label-token raw logits, positive/negative conditional probabilities, and a
+reference to the compressed top-k sidecar. By default the code scores from
+generation-time top-5000 logits and falls back to a one-token whole-vocabulary
+probe only when a configured label token is missing from that top-K set.
 
 ## Example Notebooks
 
@@ -230,24 +332,28 @@ helpers for new analysis notebooks live in `evaluation/`.
 
 ## Evaluation Flow
 
-`python -m evaluation.bridge` reads `evaluation/evaluate_BRIDGE.yaml`, then
-loads standardized result files and dispatches each task to the matching task
-class from `dataset.task`. The evaluation config is intentionally independent
-from the inference YAML. `dir_result` may contain multiple result roots; all of
-them are searched for matching task/model/prompt result files.
+`python -m evaluation.bridge` reads `evaluation/evaluate.BRIDGE.yaml`, then
+loads standardized result files and dispatches each task to the matching built-in
+BRIDGE task class from `dataset.task`. The evaluation config is intentionally
+independent from the inference YAML. `dir_result` may contain multiple result
+roots; all of them are searched for matching task/model/prompt result files.
 
 Common examples:
 
 ```bash
 python -m evaluation.bridge
 
-python -m evaluation.bridge --config evaluation/evaluate_BRIDGE.yaml
+python -m evaluation.bridge --config evaluation/evaluate.BRIDGE.yaml
+
+python -m evaluation.task --config evaluation/evaluate.task.yaml
 ```
 
-Set models, prompt modes, task types, and task subsets in
-`evaluation/evaluate_BRIDGE.yaml`. Use `models: all` to evaluate every model
-folder found under `result/<task>/`, or provide a YAML list for an explicit
-subset.
+Set models, prompt modes, task types, and task subsets in the YAML file. Use
+`models: all` to evaluate every model folder found under `result/<task>/`, or
+provide a YAML list for an explicit subset. Built-in BRIDGE tasks use
+`evaluation/evaluate.BRIDGE.yaml`; project-specific tasks use
+`evaluation/evaluate.task.yaml` and must explicitly set `tasks` and
+`custom_tasks`.
 
 Evaluation path:
 
@@ -275,7 +381,8 @@ file so repeated runs with the same seed are reproducible.
 - `notebooks/`: interactive examples; inference notebooks live in
   `notebooks/inference/` and evaluation notebooks live in `notebooks/evaluation/`.
 - `metric/`: metric implementations.
-- `model/`: model loading, local inference loops, and provider batch helpers.
+- `model/`: model loading, local inference loops, logits/metadata, and unified
+  commercial API providers.
 - `util/`: runtime config helpers, logging, JSON I/O, statistics, preprocessing.
 - `evaluation/`: maintained BRIDGE evaluation CLI and reusable
   result/performance helpers.
@@ -315,8 +422,13 @@ Root launch scripts:
   validation, GPU parsing, dataloader selection, task logging.
 - `local_config.py`: validated loaders for local-only files such as
   `configs/API.key.yaml` and `configs/dict_model_path.json`.
-- `tool.py`: JSON/JSONL helpers, logger setup, confidence intervals, list/dict
-  utilities.
+- `io.py`: JSON/JSONL, iterable JSONL, text-file, and dictionary helpers.
+- `logging.py`: logger setup and the legacy terminal progress bar.
+- `stats.py`: confidence interval/statistical helpers.
+- `text.py`: text/list cleanup helpers.
+- `misc.py`: small argument, memory-size, and dictionary helpers.
+- `seed.py`: single shared seed utility. Local inference uses
+  `seed_inference()`; evaluation uses `seed_everything(..., verbose=False)`.
 - `preprocess.py`: punctuation normalization and simple text cleanup.
 
 `dataset/`:
@@ -333,14 +445,14 @@ Root launch scripts:
 
 `model/`:
 
-- `init.py`: seed setup, model path resolution, token budget setup, tokenizer and
-  model loading, decoding parameter builders.
+- `init.py`: model path resolution, token budget setup, tokenizer/model loading,
+  and decoding parameter builders.
 - `inference.py`: HF/vLLM generation loops and result saving.
-- `azure.py`: Azure OpenAI query, batch, result parsing, and cost helpers.
-- `azure_utils.py`: Azure request/response/cost helpers used by `azure.py`.
-- `provider_common.py`: shared CoT/example helpers for provider batch code.
-- `gcp.py`: Gemini batch and result parsing helpers.
-- `deepseek.py`: DeepSeek batch and result parsing helpers.
+- `api_runner.py`: stable commercial API entry point used by `run_API.sh`,
+  `main_api.py`, and notebooks.
+- `api/`: commercial API internals split into `config.py`, `prompts.py`,
+  `provider/`, and `results.py`.
+- `metadata.py`: common config snapshots and reproducibility manifests.
 
 `metric/`:
 
@@ -350,11 +462,12 @@ Root launch scripts:
 
 `evaluation/`:
 
-- `bridge.py`: evaluation CLI and high-level orchestration.
-- `evaluate_BRIDGE.yaml`: default evaluation config.
-- `common.py`: CLI parsing, JSON I/O, seed setup, task args adapter.
+- `bridge.py`: BRIDGE CLI for built-in tasks, using `evaluate.BRIDGE.yaml`.
+- `task.py`: project-task CLI, using `evaluate.task.yaml`.
+- `config.py`: YAML parsing, `EvaluationConfig`, seed setup, task args adapter.
+- `runner.py`: shared evaluation loop used by CLI and API automatic evaluation.
+- `reporting.py`: performance JSON merge/load/print helpers.
 - `task_registry.py`: task registry and metric-printer loading.
-- `performance.py`: performance JSON merge/load/print helpers.
 - `result_utils.py`: result-file discovery and inventory helpers.
 - `README.md`: command examples and module guide.
 
@@ -364,7 +477,7 @@ Root launch scripts:
 - `evaluate_extraction.ipynb`: extraction evaluation example.
 - `evaluate_generation.ipynb`: generation evaluation example.
 
-Every maintained code folder includes a `README.md` file. Large
+Every maintained code folder includes an English `README.md`. Large
 data/result/log folders are intentionally documented from the top level because
 their contents are generated or local-only.
 
@@ -374,12 +487,16 @@ their contents are generated or local-only.
   `max_model_len`, and `max_num_seqs`.
 - Very large `max_token_output` values reserve KV cache even when outputs are
   short; lower this first when memory pressure is high.
-- `save_every_n_batches` reduces work lost after crashes but adds JSON write I/O.
-- `save_input: true` produces larger JSON files. Keep it enabled when checking
+- `save_every_n_batches` appends only new rows to a JSONL checkpoint, avoiding
+  repeated full-result rewrites while limiting work lost after a crash.
+- `save_input: true` produces larger JSON files. Keep it enabled when debugging
   prompt quality; disable it for very large production runs if disk I/O becomes
   the bottleneck.
-- Prompt formatting is cached per `GeneralDataset` instance, but each experiment
-  gets a fresh dataset copy to avoid prompt-state contamination.
+- Prompt formatting is streamed from dataloader workers without an unbounded
+  per-worker cache, avoiding retention of every long prompt for the full run.
+  Fixed few-shot example token counts are cached per worker/run.
+  Each experiment still gets a fresh dataset copy to avoid prompt-state
+  contamination.
 
 ## Lightweight Tests
 

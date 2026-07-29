@@ -1,14 +1,11 @@
-import os
 import json
-import torch
-import random
-import numpy as np
+import os
 from numbers import Number
-import transformers
-from transformers import AutoTokenizer, AutoModelForCausalLM
-from util.local_config import resolve_model_path
-from util.tool import set_default_args
 
+from transformers import AutoModelForCausalLM, AutoTokenizer
+
+from util.local_config import resolve_model_path
+from util.misc import set_default_args
 
 SAMPLING_DEFAULTS = {
     "sample_size": 1,
@@ -21,19 +18,11 @@ SAMPLING_DEFAULTS = {
     "frequency_penalty": 0.0,
 }
 
-
-def seed_everything(seed):
-    """Seed Python, NumPy, PyTorch, CUDA, and Transformers for one experiment."""
-    seed = int(seed)
-    random.seed(seed)
-    os.environ["PYTHONHASHSEED"] = str(seed)
-    np.random.seed(seed)
-    torch.manual_seed(seed)
-    torch.cuda.manual_seed(seed)
-    torch.cuda.manual_seed_all(seed)
-    torch.backends.cudnn.deterministic = True
-    transformers.set_seed(seed)
-    print(f"seed everything: {seed}")
+def _normalize_vllm_seed(seed):
+    """Return a vLLM-compatible seed value."""
+    if seed is None:
+        return None
+    return int(seed)
 
 
 def get_token_config(args):
@@ -50,7 +39,9 @@ def get_token_config(args):
             print(f"Manually set max_token_all: {max_token_all}")
         else:
             if "Qwen" in args.model_name or "Athene" in args.model_name.lower():
-                path_file_config = os.path.join(args.model_path, "tokenizer_config.json")
+                path_file_config = os.path.join(
+                    args.model_path, "tokenizer_config.json"
+                )
                 with open(path_file_config, "r", encoding="utf-8") as f:
                     dict_config = json.load(f)
                 max_token_all = dict_config["model_max_length"]
@@ -63,7 +54,9 @@ def get_token_config(args):
                 if "max_position_embeddings" in dict_config:
                     max_token_all = dict_config["max_position_embeddings"]
                 elif "text_config" in dict_config:
-                    max_token_all = dict_config["text_config"]["max_position_embeddings"]
+                    max_token_all = dict_config["text_config"][
+                        "max_position_embeddings"
+                    ]
                 else:
                     print(
                         f"Not assign max_token_all and can not find information in {path_file_config}"
@@ -157,7 +150,7 @@ def get_chat_config(args) -> dict:
     # ---- gemma-4 ----
     elif model_name.startswith("gemma-4"):
         val, is_default = set_default_args(
-            args, "enable_thinking", default=True, valid_set={True, False}
+            args, "enable_thinking", default=False, valid_set={True, False}
         )
         kwargs["enable_thinking"] = val
         print(
@@ -225,9 +218,21 @@ def load_model(args):
             "max_model_len": args.max_token_all,
             "gpu_memory_utilization": args.gpu_memory_util,
         }
+        if getattr(args, "logits_enabled", False):
+            vllm_kwargs.update(
+                {
+                    "max_logprobs": int(
+                        getattr(args, "vllm_max_logprobs", -1)
+                    ),
+                    "logprobs_mode": getattr(
+                        args, "vllm_logprobs_mode", "raw_logits"
+                    ),
+                }
+            )
         optional_vllm_kwargs = [
             "max_num_seqs",
             "max_num_batched_tokens",
+            "limit_mm_per_prompt",
         ]
         for key in optional_vllm_kwargs:
             if hasattr(args, key):
@@ -388,7 +393,7 @@ def get_sampling_params(args, logger):
 
 def log_token_limits(args, logger):
     """
-    Log token limit related runtime arguments.
+    Log token limit related arguments for debugging.
     """
     logger.info(f"Max tokens all: {getattr(args, 'max_token_all', None)}")
     logger.info(f"Max tokens input: {getattr(args, 'max_token_input', None)}")
@@ -492,19 +497,25 @@ def model_config_vllm(args, logger):
     """
     from vllm import SamplingParams
 
+    from model.logits import get_generation_trace_top_k
+
     logger.info(f"Decoding strategy (vLLM): {args.decoding_strategy}")
+    seed = _normalize_vllm_seed(getattr(args, "seed", None))
+    args.seed = seed
+    trace_top_k = get_generation_trace_top_k(args)
 
     if args.decoding_strategy == "greedy":
         # Greedy decoding for vLLM: temperature=0.0 implies greedy behavior.
         sampling_kwargs = {
-            "seed": args.seed,
+            "seed": seed,
             "temperature": 0.0,
             "max_tokens": args.max_token_output,
         }
-        if (
-            args.model_name.lower().startswith("gemma-4")
-            and getattr(args, "chat_kwargs", {}).get("enable_thinking")
-        ):
+        if trace_top_k > 0:
+            sampling_kwargs["logprobs"] = trace_top_k
+        if args.model_name.lower().startswith("gemma-4") and getattr(
+            args, "chat_kwargs", {}
+        ).get("enable_thinking"):
             sampling_kwargs["skip_special_tokens"] = False
             logger.info(
                 "Set skip_special_tokens=False for Gemma4 thinking output parsing."
@@ -527,7 +538,7 @@ def model_config_vllm(args, logger):
             )
         sampling_kwargs = {
             "n": args.sample_size,
-            "seed": args.seed,
+            "seed": seed,
             "temperature": args.temperature,
             "max_tokens": args.max_token_output,
             "top_p": args.top_p,
@@ -537,10 +548,11 @@ def model_config_vllm(args, logger):
             "presence_penalty": args.presence_penalty,
             "frequency_penalty": args.frequency_penalty,
         }
-        if (
-            args.model_name.lower().startswith("gemma-4")
-            and getattr(args, "chat_kwargs", {}).get("enable_thinking")
-        ):
+        if trace_top_k > 0:
+            sampling_kwargs["logprobs"] = trace_top_k
+        if args.model_name.lower().startswith("gemma-4") and getattr(
+            args, "chat_kwargs", {}
+        ).get("enable_thinking"):
             sampling_kwargs["skip_special_tokens"] = False
             logger.info(
                 "Set skip_special_tokens=False for Gemma4 thinking output parsing."

@@ -1,27 +1,40 @@
-import os
-import json
 import hashlib
-import numpy as np
+import json
+import os
 import warnings
+from itertools import chain
+
+import numpy as np
+from torch.utils.data import DataLoader, Dataset
 from tqdm import tqdm
-from torch.utils.data import Dataset, DataLoader
+
+from util.runtime import parse_path_list, parse_prompt_mode
+from util.stats import get_mean_std_ci
 
 from .config import (
     get_models_evaluate,
     transform_instruction_to_cot,
     transform_instruction_to_direct,
 )
-
 from .process import format_chat
 
-from util.tool import get_mean_std_ci
-from util.runtime import parse_path_list, parse_prompt_mode
+
+def collate_prompt_records(batch):
+    """Keep formatted prompt records as a list for variable-length metadata."""
+    return batch
 
 
 class GeneralDataset(Dataset):
     """Torch dataset that lazily formats BRIDGE samples into model prompts."""
 
-    def __init__(self, args, data, tokenizer, example=None):
+    def __init__(
+        self,
+        args,
+        data,
+        tokenizer,
+        example=None,
+        return_metadata=False,
+    ):
         """
         Initialize the dataset for benchmarking.
 
@@ -35,34 +48,43 @@ class GeneralDataset(Dataset):
             - input: str, input for the task
             - output: str, expected output for the task
         """
-        self.args = args
         self.data = data
         self.tokenizer = tokenizer
         self.model_name = args.model_name
         self.examples = example or []
         self.chat_kwargs = args.chat_kwargs
         self.max_token_input = args.max_token_input
-        self.max_token_output = args.max_token_output
-        self.dict_idx_cache = {}
+        self.return_metadata = return_metadata
+        # Worker-local and bounded by the configured few-shot set.
+        self.example_token_cache = {}
 
     def __len__(self):
         """Return the number of source samples in this split."""
         return len(self.data)
 
     def __getitem__(self, idx):
-        """Return one formatted prompt, using a per-index cache after first access."""
-        if idx in self.dict_idx_cache:
-            return self.dict_idx_cache[idx]
-        input_text = format_chat(
+        """Format and return one prompt without retaining an unbounded cache."""
+        input_text, prompt_metadata = format_chat(
             model_name=self.model_name,
             tokenizer=self.tokenizer,
             data=self.data[idx],
             max_token_input=self.max_token_input,
             examples=self.examples,
             chat_kwargs=self.chat_kwargs,
+            return_metadata=True,
+            example_token_cache=self.example_token_cache,
         )
-        self.dict_idx_cache[idx] = input_text
-        return input_text
+        if self.return_metadata:
+            item = {
+                "index": idx,
+                "prompt": input_text,
+                "input": prompt_metadata["input"],
+                "example": prompt_metadata["example"],
+            }
+        else:
+            # Preserve the historical direct GeneralDataset interface.
+            item = input_text
+        return item
 
 
 class GeneralTask:
@@ -96,22 +118,16 @@ class GeneralTask:
 
         self.language = list_dict_data[0]["language"]
 
-        # split data
-        self.dataset_train_base = [
-            dict_data
-            for dict_data in list_dict_data
-            if dict_data["split"] == "train" and dict_data["output"].strip() != ""
-        ]
-        self.dataset_dev_base = [
-            dict_data
-            for dict_data in list_dict_data
-            if dict_data["split"] == "dev" and dict_data["output"].strip() != ""
-        ]
-        self.dataset_test_base = [
-            dict_data
-            for dict_data in list_dict_data
-            if dict_data["split"] == "test" and dict_data["output"].strip() != ""
-        ]
+        # Split in one pass instead of scanning a potentially large task file
+        # once for every split.
+        split_rows = {"train": [], "dev": [], "test": []}
+        for dict_data in list_dict_data:
+            split = dict_data["split"]
+            if split in split_rows and dict_data["output"].strip() != "":
+                split_rows[split].append(dict_data)
+        self.dataset_train_base = split_rows["train"]
+        self.dataset_dev_base = split_rows["dev"]
+        self.dataset_test_base = split_rows["test"]
 
         print(
             "Load {} data: train: {}, val: {}, test: {}".format(
@@ -146,25 +162,29 @@ class GeneralTask:
 
     def _iter_runtime_data(self):
         """Iterate through the currently active split copies."""
-        return self.dataset_train + self.dataset_dev + self.dataset_test
+        return chain(self.dataset_train, self.dataset_dev, self.dataset_test)
 
     def setup_direct(self):
         """
         Transform the dataset to the direct format
         """
-        print(f"Prompt mode: Direct")
+        print("Prompt mode: Direct")
         num_transformed = 0
+        instruction_cache = {}
         for idx_data, dict_data in enumerate(self._iter_runtime_data()):
-            instruction_direct = transform_instruction_to_direct(
-                dict_data["instruction"],
-                flag_print=False,
-            )
+            instruction = dict_data["instruction"]
+            if instruction not in instruction_cache:
+                instruction_cache[instruction] = transform_instruction_to_direct(
+                    instruction,
+                    flag_print=False,
+                )
+            instruction_direct = instruction_cache[instruction]
             if instruction_direct:
                 if idx_data == 0:
                     print(
-                        f"Original instruction: {dict_data['instruction']}\n"
+                        f"Original instruction: {instruction}\n"
                         f"Transformed instruction: {instruction_direct}"
-                )
+                    )
                 # Replace the instruction in the dataset
                 dict_data["instruction"] = instruction_direct
                 num_transformed += 1
@@ -175,19 +195,23 @@ class GeneralTask:
         """
         Transform the dataset to the Chain of Thought format
         """
-        print(f"Prompt mode: Chain of Thought")
+        print("Prompt mode: Chain of Thought")
         num_transformed = 0
+        instruction_cache = {}
         for idx_data, dict_data in enumerate(self._iter_runtime_data()):
-            instruction_cot = transform_instruction_to_cot(
-                dict_data["instruction"],
-                flag_print=False,
-            )
+            instruction = dict_data["instruction"]
+            if instruction not in instruction_cache:
+                instruction_cache[instruction] = transform_instruction_to_cot(
+                    instruction,
+                    flag_print=False,
+                )
+            instruction_cot = instruction_cache[instruction]
             if instruction_cot:
                 if idx_data == 0:
                     print(
-                        f"Original instruction: {dict_data['instruction']}\n"
+                        f"Original instruction: {instruction}\n"
                         f"Transformed instruction: {instruction_cot}"
-                )
+                    )
                 # Replace the instruction in the dataset
                 dict_data["instruction"] = instruction_cot
                 num_transformed += 1
@@ -261,57 +285,39 @@ class GeneralTask:
         if num_example is not None:
             self.setup_few_shot(num_example)
 
+    def _build_dataloader(self, dataset, batch_size, num_workers):
+        """Build one inference dataloader with prompt metadata propagation."""
+        return dataset, DataLoader(
+            dataset=GeneralDataset(
+                self.args,
+                dataset,
+                self.tokenizer,
+                self.examples,
+                return_metadata=True,
+            ),
+            batch_size=batch_size,
+            shuffle=False,
+            drop_last=False,
+            num_workers=num_workers,
+            collate_fn=collate_prompt_records,
+        )
+
     def dataloader_all(self, batch_size, num_workers):
         """Return a dataloader over train, dev, and test splits."""
         dataset = self.dataset_train + self.dataset_dev + self.dataset_test
-        return dataset, DataLoader(
-            dataset=GeneralDataset(
-                self.args, dataset, self.tokenizer, self.examples
-            ),
-            batch_size=batch_size,
-            shuffle=False,
-            drop_last=False,
-            num_workers=num_workers,
-        )
+        return self._build_dataloader(dataset, batch_size, num_workers)
 
     def dataloader_train(self, batch_size, num_workers):
         """Return a dataloader over the train split."""
-        dataset = self.dataset_train
-        return dataset, DataLoader(
-            dataset=GeneralDataset(
-                self.args, dataset, self.tokenizer, self.examples
-            ),
-            batch_size=batch_size,
-            shuffle=False,
-            drop_last=False,
-            num_workers=num_workers,
-        )
+        return self._build_dataloader(self.dataset_train, batch_size, num_workers)
 
     def dataloader_dev(self, batch_size, num_workers):
         """Return a dataloader over the dev split."""
-        dataset = self.dataset_dev
-        return dataset, DataLoader(
-            dataset=GeneralDataset(
-                self.args, self.dataset_dev, self.tokenizer, self.examples
-            ),
-            batch_size=batch_size,
-            shuffle=False,
-            drop_last=False,
-            num_workers=num_workers,
-        )
+        return self._build_dataloader(self.dataset_dev, batch_size, num_workers)
 
     def dataloader_test(self, batch_size, num_workers):
         """Return a dataloader over the test split."""
-        dataset = self.dataset_test
-        return dataset, DataLoader(
-            dataset=GeneralDataset(
-                self.args, self.dataset_test, self.tokenizer, self.examples
-            ),
-            batch_size=batch_size,
-            shuffle=False,
-            drop_last=False,
-            num_workers=num_workers,
-        )
+        return self._build_dataloader(self.dataset_test, batch_size, num_workers)
 
 
 class GeneralEvaluation(GeneralTask):
@@ -534,6 +540,7 @@ class GeneralEvaluation(GeneralTask):
                         )
             else:
                 for model_one in os.listdir(path_dir_result):
+                    # print(f"Now processing: {model_one}")
                     model_path = os.path.join(path_dir_result, model_one)
                     list_file_result = _get_model_result_files(model_path, prompt_mode)
                     if list_file_result:
@@ -595,6 +602,7 @@ class GeneralEvaluation(GeneralTask):
         """
         with open(file_result, "r", encoding="utf-8") as f:
             list_dict_result = json.load(f)
+            # print(f"Load {file_result} with {len(list_dict_result)} samples.")
         self._warn_if_result_not_aligned(file_result, list_dict_result)
         self._seed_evaluation_rng(file_result, prompt_mode)
         list_dict_result = self._normalize_predictions_for_evaluation(list_dict_result)
@@ -660,6 +668,11 @@ class GeneralEvaluation(GeneralTask):
         for args in list_args:
             dict_performance = self._performance_one_iteration(args)
             list_dict_performance.append(dict_performance)
+
+        # Use a pool of workers to parallelize the bootstrapping process
+        # n_thread = 4
+        # with Pool(processes=n_thread) as pool:
+        #     list_dict_performance = pool.map(self._performance_one_iteration, list_args)
 
         return list_dict_performance
 

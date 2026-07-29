@@ -1,10 +1,9 @@
 import numpy as np
 from nltk.data import load as nltk_load
 from nltk.tokenize.destructive import NLTKWordTokenizer
-from nltk.translate.bleu_score import sentence_bleu
-from nltk.translate.bleu_score import SmoothingFunction
+from nltk.translate.bleu_score import SmoothingFunction, sentence_bleu
 
-from dataset.config import get_models_evaluate, get_metrics_gen
+from dataset.config import get_metrics_gen, get_models_evaluate
 
 dict_lang_language = {
     "en": "english",
@@ -25,12 +24,23 @@ class Tokenizer_gen:
     def __init__(self, lang="en"):
         """Initialize language-specific NLTK tokenizers."""
         self.language = dict_lang_language[lang]
-        self.tokenizer_lang = nltk_load(f"tokenizers/punkt/{self.language}.pickle")
+        try:
+            self.tokenizer_lang = nltk_load(
+                f"tokenizers/punkt/{self.language}.pickle"
+            )
+        except LookupError:
+            # Keep generation evaluation usable in fresh environments where
+            # optional NLTK punkt data has not been downloaded.
+            self.tokenizer_lang = None
         self.tokenizer_nltk = NLTKWordTokenizer()
 
     def tokenize(self, text):
         """Tokenize text into words after language-specific sentence splitting."""
-        token_temp = self.tokenizer_lang.tokenize(text)
+        token_temp = (
+            self.tokenizer_lang.tokenize(text)
+            if self.tokenizer_lang is not None
+            else [text]
+        )
         return [
             token for sent in token_temp for token in self.tokenizer_nltk.tokenize(sent)
         ]
@@ -46,6 +56,15 @@ class Tokenizer_gen_zh_jp:
 
     def tokenize(self, text):
         """Tokenize Chinese/Japanese text as non-space characters."""
+        # Option for jp: janome
+        # from janome.tokenizer import Tokenizer
+        # return [token.surface for token in t.tokenize(text)]
+
+        # Option for zh: jieba
+        # import jieba
+        # return jieba.lcut(text)
+
+        # Simple whitespace tokenizer
         text = text.replace(" ", "")
         return list(text)
 
@@ -149,11 +168,13 @@ def calc_metrics_gen(list_pred, list_label, lang="en"):
         list_label_non_empty = [list_label[i] for i in non_empty_indices]
 
         # Calculate BERTScore
+        import torch
+
         bert_score_p, bert_score_r, bert_score_f1 = bert_score.score(
             cands=list_pred_non_empty,
             refs=list_label_non_empty,
             lang=lang,
-            device="cuda",
+            device="cuda" if torch.cuda.is_available() else "cpu",
             batch_size=1024,
             nthreads=32,
             use_fast_tokenizer=True,

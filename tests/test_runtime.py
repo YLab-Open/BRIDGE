@@ -1,13 +1,22 @@
 import argparse
 import json
+import sys
 from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
 
+from dataset.task import get_cls_for_all_tasks
 from evaluation.bridge import DEFAULT_CONFIG_PATH, config_from_yaml
 from evaluation.result_utils import collect_result_inventory, find_result_files
-from dataset.task import get_cls_for_all_tasks
+from evaluation.task import (
+    DEFAULT_CONFIG_PATH as DEFAULT_TASK_CONFIG_PATH,
+)
+from evaluation.task import (
+    validate_task_config,
+)
+from evaluation.task_registry import select_task_groups
+from util.io import load_json, write_json
 from util.local_config import (
     DEFAULT_API_KEY_PATH,
     DEFAULT_MODEL_MAPPING_PATH,
@@ -15,12 +24,14 @@ from util.local_config import (
     load_model_path_mapping,
     resolve_model_path,
 )
+from util.misc import set_default_args
 from util.runtime import (
     load_yaml_config,
     merge_config_into_args,
+    normalize_experiments,
     normalize_runtime_args,
-    parse_path_list,
     parse_gpu_list,
+    parse_path_list,
     parse_prompt_mode,
     validate_args,
 )
@@ -75,12 +86,29 @@ def test_parse_path_list_accepts_csv_and_yaml_list():
         parse_path_list([" ", ""], "dir_result")
 
 
+def test_normalize_experiments_casts_seed_to_int():
+    assert normalize_experiments(
+        [["direct", "GREEDY", "42"], ("cot-2-shot", "sampling", 43)]
+    ) == [["direct", "greedy", 42], ["cot-2-shot", "sampling", 43]]
+
+
 def test_load_yaml_config_rejects_duplicate_keys(tmp_path):
     path_config = tmp_path / "config.yaml"
     path_config.write_text("engine: vllm\nengine: hf\n", encoding="utf-8")
 
     with pytest.raises(ValueError, match="Duplicate key"):
         load_yaml_config(path_config)
+
+
+def test_utility_split_uses_direct_modules(tmp_path):
+    path_json = tmp_path / "nested" / "data.json"
+    write_json({"ok": True}, path_json)
+
+    assert load_json(path_json) == {"ok": True}
+    assert set_default_args(SimpleNamespace(), "missing", "default") == (
+        "default",
+        True,
+    )
 
 
 def test_merge_config_into_args_preserves_cli_priority():
@@ -106,7 +134,7 @@ def test_validate_and_normalize_runtime_args(tmp_path):
     model_file.write_text(json.dumps({"model-a": str(tmp_path)}), encoding="utf-8")
     args = SimpleNamespace(
         tasks=["ADE-Identification"],
-        experiments=[["direct", "greedy", 42], ["cot-2-shot", "sampling", 43]],
+        experiments=[["direct", "greedy", "42"], ["cot-2-shot", "sampling", 43]],
         mode="test",
         engine="vllm",
         dir_dataset="dataset_raw,dataset_raw_test",
@@ -127,19 +155,50 @@ def test_validate_and_normalize_runtime_args(tmp_path):
     assert args.dir_dataset == ["dataset_raw", "dataset_raw_test"]
     assert args.dir_result == ["result", "result_extra"]
     assert args.dir_result_save == "result"
+    assert args.experiments == [["direct", "greedy", 42], ["cot-2-shot", "sampling", 43]]
 
 
 def test_public_task_names_are_registered():
     root = Path(__file__).resolve().parents[1]
-    config = load_yaml_config(root / "configs" / "BRIDGE.yaml")
+    config = load_yaml_config(root / "configs" / "BRIDGE.example.yaml")
     _, all_tasks = get_cls_for_all_tasks()
 
     assert "ADE-Drug dosage" in all_tasks
     assert "ADE-Identification" in all_tasks
     assert "BrainMRI-AIS" in all_tasks
-    assert "1-1.ADE-ADE identification" not in all_tasks
-    assert "1-3.ADE-Drug dosage" not in all_tasks
+    assert "1" + "-1.ADE-ADE identification" not in all_tasks
+    assert "1" + "-3.ADE-Drug dosage" not in all_tasks
     assert set(config["tasks"]).issubset(all_tasks)
+
+
+def test_model_config_vllm_casts_string_seed(monkeypatch):
+    pytest.importorskip("torch")
+    pytest.importorskip("transformers")
+
+    class FakeSamplingParams:
+        def __init__(self, **kwargs):
+            self.kwargs = kwargs
+            self.repetition_penalty = kwargs.get("repetition_penalty", 1.0)
+
+    monkeypatch.setitem(
+        sys.modules,
+        "vllm",
+        SimpleNamespace(SamplingParams=FakeSamplingParams),
+    )
+    from model.init import model_config_vllm
+
+    args = SimpleNamespace(
+        decoding_strategy="greedy",
+        seed="42",
+        max_token_output=16,
+        model_name="model-a",
+    )
+    logger = SimpleNamespace(info=lambda *_: None, warning=lambda *_: None)
+
+    sampling_params = model_config_vllm(args, logger)
+
+    assert sampling_params.kwargs["seed"] == 42
+    assert args.seed == 42
 
 
 def test_normalize_runtime_args_accepts_yaml_path_lists(tmp_path):
@@ -156,6 +215,48 @@ def test_normalize_runtime_args_accepts_yaml_path_lists(tmp_path):
     assert args.dir_dataset == ["dataset_raw", "dataset_raw_test"]
     assert args.dir_result == ["result", "result_extra"]
     assert args.dir_result_save == "result"
+
+
+def test_normalize_runtime_args_respects_explicit_num_workers(tmp_path):
+    model_file = tmp_path / "dict_model_path.json"
+    model_file.write_text(json.dumps({"model-a": str(tmp_path)}), encoding="utf-8")
+    args = SimpleNamespace(
+        tasks=["task"],
+        experiments=[["direct", "greedy", 42]],
+        mode="test",
+        engine="vllm",
+        dir_dataset="dataset_raw",
+        dir_result="result",
+        batch_size=1,
+        model_file=str(model_file),
+        gpus="0,1",
+        num_workers=0,
+    )
+
+    validate_args(args)
+    normalize_runtime_args(args)
+
+    assert args.num_workers == 0
+
+
+def test_validate_args_rejects_negative_num_workers(tmp_path):
+    model_file = tmp_path / "dict_model_path.json"
+    model_file.write_text(json.dumps({"model-a": str(tmp_path)}), encoding="utf-8")
+    args = SimpleNamespace(
+        tasks=["task"],
+        experiments=[["direct", "greedy", 42]],
+        mode="test",
+        engine="vllm",
+        dir_dataset="dataset_raw",
+        dir_result="result",
+        batch_size=1,
+        model_file=str(model_file),
+        gpus="0",
+        num_workers=-1,
+    )
+
+    with pytest.raises(ValueError, match="num_workers"):
+        validate_args(args)
 
 
 def test_validate_args_rejects_bad_prompt_mode(tmp_path):
@@ -253,7 +354,7 @@ def test_default_model_mapping_falls_back_to_legacy_root_file(tmp_path, monkeypa
 
 
 def test_default_evaluation_config_path_exists_and_parses():
-    assert DEFAULT_CONFIG_PATH.name == "evaluate_BRIDGE.yaml"
+    assert DEFAULT_CONFIG_PATH.name == "evaluate.BRIDGE.yaml"
     assert DEFAULT_CONFIG_PATH.exists()
 
     config = config_from_yaml(DEFAULT_CONFIG_PATH)
@@ -261,6 +362,29 @@ def test_default_evaluation_config_path_exists_and_parses():
     assert config.dir_result == ["result"]
     assert config.prompt_modes == ["direct"]
     assert set(config.task_types) == {"clf", "ext", "gen"}
+
+
+def test_default_task_evaluation_config_path_exists_and_requires_custom_tasks():
+    assert DEFAULT_TASK_CONFIG_PATH.name == "evaluate.task.yaml"
+    assert DEFAULT_TASK_CONFIG_PATH.exists()
+
+    config = config_from_yaml(DEFAULT_TASK_CONFIG_PATH)
+
+    assert config.tasks
+    assert config.custom_tasks
+    assert any(
+        task_name in task_mapping
+        for task_mapping in config.custom_tasks.values()
+        for task_name in config.tasks
+    )
+    validate_task_config(config)
+
+
+def test_task_entry_rejects_bridge_config_without_custom_tasks():
+    config = config_from_yaml(DEFAULT_CONFIG_PATH)
+
+    with pytest.raises(ValueError, match="custom_tasks"):
+        validate_task_config(config)
 
 
 def test_result_inventory_searches_multiple_result_roots(tmp_path):
@@ -346,8 +470,106 @@ def test_general_evaluation_searches_multiple_result_roots(tmp_path):
     }
 
 
+def test_evaluation_registry_accepts_yaml_custom_tasks(tmp_path, monkeypatch):
+    pytest.importorskip("regex")
+    module_dir = tmp_path / "custom_pkg"
+    module_dir.mkdir()
+    (module_dir / "__init__.py").write_text("", encoding="utf-8")
+    (module_dir / "tasks.py").write_text(
+        "\n".join(
+            [
+                "class CustomExtTask:",
+                "    pass",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.syspath_prepend(str(tmp_path))
+
+    selected = select_task_groups(
+        task_types=["ext"],
+        tasks=["Project-Task"],
+        custom_tasks={"ext": {"Project-Task": "custom_pkg.tasks:CustomExtTask"}},
+    )
+
+    assert selected["ext"]["registry"]["Project-Task"].__name__ == "CustomExtTask"
+
+
+def test_main_api_auto_evaluation_defaults_to_all_task_types(monkeypatch):
+    import evaluation.runner
+    import main_api
+
+    captured = {}
+
+    def fake_run_config(config):
+        captured["task_types"] = config.task_types
+        captured["tasks"] = config.tasks
+
+    monkeypatch.setattr(evaluation.runner, "run_config", fake_run_config)
+
+    main_api.run_evaluation(
+        run_cfg={
+            "dir_dataset": ["dataset_raw"],
+            "dir_result": ["result"],
+            "tasks": ["Task-A"],
+        },
+        model_names=["model-a"],
+        prompt_modes=["direct"],
+    )
+
+    assert captured == {
+        "task_types": ["clf", "ext", "gen"],
+        "tasks": ["Task-A"],
+    }
+
+
+def test_api_experiment_dry_run_does_not_create_output_dirs(tmp_path, monkeypatch):
+    from model import api_runner
+
+    monkeypatch.setattr(
+        api_runner,
+        "load_task_dataset",
+        lambda **_: ([{"id": "1", "language": "en"}], []),
+    )
+    monkeypatch.setattr(
+        api_runner,
+        "build_messages_for_dataset",
+        lambda **_: {"1": [{"role": "user", "content": "hello"}]},
+    )
+
+    result = api_runner.run_api_experiment(
+        provider_name="azure",
+        model_name="ad-hoc-model",
+        run_cfg={
+            "mode": "test",
+            "dir_dataset": [str(tmp_path / "dataset")],
+            "dir_result": [str(tmp_path / "result")],
+            "chat_params": {},
+            "require_model_registered": False,
+            "save_trace": True,
+        },
+        api_model_cfg={},
+        api_key_cfg={},
+        task_name="Task-A",
+        prompt_mode="direct",
+        decoding_strategy="greedy",
+        seed=42,
+        dry_run=True,
+    )
+
+    assert result.dry_run
+    assert result.result_path == (
+        tmp_path
+        / "result"
+        / "Task-A"
+        / "ad-hoc-model"
+        / "Task-A-direct-greedy-42.result.json"
+    )
+    assert not (tmp_path / "result").exists()
+
+
 def test_documentation_file_naming_convention():
-    """Keep public documentation filenames consistent across folders."""
+    """Keep public documentation English-only and consistently named."""
     root = Path(__file__).resolve().parents[1]
     assert (root / "README.md").exists()
     legacy_root_readme = "README" + ".zh"
@@ -378,8 +600,8 @@ def test_documentation_file_naming_convention():
         assert not (path_dir / "README-zh.md").exists()
         assert not (path_dir / legacy_root_readme).exists()
 
-    assert (root / "model" / "README-AZURE.md").exists()
-    assert not (root / "model" / "README-AZURE-zh.md").exists()
+    assert (root / "configs" / "API_USAGE.md").exists()
+    assert not (root / "configs" / "API_USAGE-zh.md").exists()
     assert not (root / "model" / legacy_azure_zh).exists()
 
 
@@ -398,7 +620,8 @@ def test_root_entry_files_are_kept_small_after_reorganization():
     assert not (root / "scripts" / "run.sh").exists()
     assert not (root / "scripts" / "run_multiple_model.sh").exists()
 
-    assert (root / "configs" / "BRIDGE.yaml").exists()
+    assert (root / "configs" / "BRIDGE.example.yaml").exists()
+    assert not (root / "configs" / "BRIDGE.yaml").exists()
     assert (root / "run.sh").exists()
     assert (root / "run_multiple_model.sh").exists()
     assert (root / "notebooks" / "inference" / "Inference task.Local.ipynb").exists()

@@ -6,7 +6,10 @@ def test_evaluation_notebook_dry_run_cells_execute(monkeypatch):
     """Execute maintained evaluation notebooks with RUN_EVALUATION disabled."""
     root = Path(__file__).resolve().parents[1]
     path_notebooks = root / "notebooks" / "evaluation"
-    notebooks = sorted(path_notebooks.glob("*.ipynb"))
+    # Only the maintained public examples use the ``evaluate_`` prefix.
+    # Local exploratory notebooks are ignored by git and must not affect the
+    # release regression suite when they happen to exist in this directory.
+    notebooks = sorted(path_notebooks.glob("evaluate_*.ipynb"))
     assert notebooks
 
     monkeypatch.chdir(path_notebooks)

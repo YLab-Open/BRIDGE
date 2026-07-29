@@ -10,8 +10,12 @@ text preprocessing helpers.
   task logging.
 - `local_config.py`: loaders for local-only files such as `configs/API.key.yaml` and
   `configs/dict_model_path.json`.
-- `tool.py`: JSON/JSONL helpers, text/list utilities, logging, progress bar, and
-  confidence interval helper.
+- `io.py`: JSON/JSONL, iterable JSONL, text-file, and simple dictionary file helpers.
+- `logging.py`: logger setup and the legacy terminal `ProgressBar`.
+- `stats.py`: confidence interval/statistical helpers.
+- `text.py`: text/list cleanup helpers.
+- `misc.py`: small argument, memory-size, and dictionary helpers.
+- `seed.py`: shared seed setup for local inference and evaluation bookkeeping.
 - `preprocess.py`: punctuation normalization and simple EHR-note cleanup.
 
 ## Local-Only Configs

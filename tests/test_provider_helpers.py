@@ -3,58 +3,20 @@ import pytest
 pytest.importorskip("tiktoken")
 pytest.importorskip("openai")
 
-from model.azure import (
+from model.api.azure_common import (
     build_chat_completion_batch_body,
     build_response_batch_body,
-    default_query_mode_for_model,
     extract_text_from_chat_completion_body,
     extract_text_from_responses_api_output,
     get_azure_price,
     is_reasoning_model,
 )
-from model.azure_utils import build_messages, parse_custom_id
-from model.provider_common import apply_cot_instruction_transform, get_example_path
-
-
-def test_provider_common_builds_example_path():
-    assert get_example_path("dataset_raw", "task-a", "direct") == (
-        "dataset_raw/example/task-a.example.json"
-    )
-    assert get_example_path("dataset_raw", "task-a", "cot") == (
-        "dataset_raw/example_cot/task-a.example.json"
-    )
-    with pytest.raises(ValueError):
-        get_example_path("dataset_raw", "task-a", "directly")
-
-
-def test_provider_common_applies_cot_transform():
-    dataset = [
-        {
-            "id": "sample-1",
-            "instruction": (
-                "Return your answer in the following format. DO NOT GIVE ANY EXPLANATION:"
-            ),
-        }
-    ]
-
-    apply_cot_instruction_transform(dataset, "task-a")
-
-    assert "Analysis:" in dataset[0]["instruction"]
-    assert "Result:" in dataset[0]["instruction"]
-
-
-def test_azure_message_order_with_examples():
-    messages = build_messages(
-        input_data={"instruction": "Instruction", "input": "Current input"},
-        examples=[{"input": "Example input", "output": "Example output"}],
-    )
-
-    assert messages == [
-        {"role": "system", "content": "Instruction"},
-        {"role": "user", "content": "Example input"},
-        {"role": "assistant", "content": "Example output"},
-        {"role": "user", "content": "Current input"},
-    ]
+from model.api.config import effective_run_config, require_model_section
+from model.api.prompts import custom_id
+from model.api.results import QueryResult
+from model.api_runner import (
+    result_rows_from_query_results,
+)
 
 
 def test_azure_batch_body_token_keys():
@@ -92,18 +54,80 @@ def test_azure_result_text_extractors():
 
 def test_azure_model_detection_and_cost_helpers():
     assert is_reasoning_model("gpt-5")
-    assert default_query_mode_for_model("gpt-5") == "response"
-    assert default_query_mode_for_model("gpt-4o") == "chat"
     assert get_azure_price("gpt-4o") == (2.5, 10.0)
     assert get_azure_price("gpt-4o-batch", flag_batch=True) == (1.25, 5.0)
 
 
-def test_parse_custom_id():
-    assert parse_custom_id("task|model|direct-5-shot|test|sample-1") == (
-        "task",
-        "model",
-        "direct-5-shot",
-        "test",
-        "sample-1",
+def test_custom_id():
+    assert custom_id(
+        "task", "model", "direct-5-shot", "test", "sample-1"
+    ) == (
+        "task|model|direct-5-shot|test|sample-1"
     )
-    assert parse_custom_id("bad") is None
+
+
+def test_api_model_registry_fails_fast_for_missing_model():
+    with pytest.raises(ValueError, match="not registered"):
+        require_model_section(
+            api_model_cfg={"Azure": {"gpt-4o": {"deploy_name": "gpt-4o"}}},
+            provider="azure",
+            model_name="missing-model",
+        )
+
+
+def test_effective_run_config_applies_greedy_seed_to_azure_chat():
+    cfg = effective_run_config(
+        run_cfg={"chat_params": {"temperature": 0.7}, "max_token_output": 8},
+        provider="azure",
+        decoding_strategy="greedy",
+        seed=123,
+    )
+
+    assert cfg["chat_params"]["temperature"] == 0
+    assert cfg["chat_params"]["top_p"] == 1
+    assert cfg["chat_params"]["seed"] == 123
+
+
+def test_effective_run_config_requires_sampling_override():
+    with pytest.raises(ValueError, match="sampling_chat_params"):
+        effective_run_config(
+            run_cfg={"chat_params": {}},
+            provider="azure",
+            decoding_strategy="sampling",
+            seed=42,
+        )
+
+
+def test_api_result_rows_can_omit_saved_input():
+    rows = result_rows_from_query_results(
+        dataset=[
+            {
+                "task": "Task-A",
+                "id": "1",
+                "type": "ext",
+                "language": "en",
+                "split": "test",
+                "instruction": "private instruction",
+                "input": "private note",
+                "output": "gold",
+            }
+        ],
+        messages_by_id={"1": [{"role": "user", "content": "private note"}]},
+        examples_by_id={"1": ["example-1"]},
+        results=[QueryResult(custom_id="Task-A|model|direct|test|1", text="pred")],
+        save_input=False,
+    )
+
+    assert rows == [
+        {
+            "task": "Task-A",
+            "id": "1",
+            "type": "ext",
+            "language": "en",
+            "split": "test",
+            "output": "gold",
+            "example": ["example-1"],
+            "pred": "pred",
+            "error": "",
+        }
+    ]

@@ -1,8 +1,15 @@
+# ruff: noqa: F403, F405
+"""Task registry built from classification, extraction, and generation adapters.
+
+The BRIDGE registry intentionally imports all task adapter classes into this
+module so the task-name dictionaries below can stay compact.
+"""
+
+from typing import Union
+
 from .classification import *
 from .extraction import *
 from .generation import *
-
-from typing import Union
 
 
 def get_type_task(task: str) -> str:

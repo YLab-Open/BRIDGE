@@ -1,11 +1,33 @@
-import json
-import random
+from __future__ import annotations
+
+from dataclasses import dataclass, field
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
 
-import numpy as np
 from util.runtime import load_yaml_config, parse_prompt_mode
+from util.seed import seed_everything
+
+from .task_registry import TASK_TYPE_ORDER, get_default_models_to_print
+
+
+@dataclass
+class EvaluationConfig:
+    """Runtime configuration for result evaluation."""
+
+    dir_dataset: list[str] = field(default_factory=lambda: ["dataset_raw"])
+    dir_result: list[str] = field(default_factory=lambda: ["result"])
+    dir_performance: str = "performance"
+    prompt_modes: list[str] = field(default_factory=lambda: ["direct"])
+    model_names: list[str] | None = None
+    models_to_print: list[str] = field(default_factory=get_default_models_to_print)
+    task_types: list[str] = field(default_factory=lambda: list(TASK_TYPE_ORDER))
+    tasks: list[str] | None = None
+    custom_tasks: dict = field(default_factory=dict)
+    bootstrap: int = 1000
+    seed: int = 42
+    sample_eval_index: int = 0
+    print_summary: bool = True
 
 
 def split_csv(value: str | None) -> list[str]:
@@ -53,7 +75,10 @@ def parse_prompt_modes(value) -> list[str]:
     return prompt_modes
 
 
-def parse_task_types(value, valid_task_types: tuple[str, ...]) -> list[str]:
+def parse_task_types(
+    value,
+    valid_task_types: tuple[str, ...] = TASK_TYPE_ORDER,
+) -> list[str]:
     """Parse configured task types and validate against known groups."""
     task_types = as_list(value, "task_types", allow_none=True)
     if task_types is None:
@@ -71,10 +96,46 @@ def load_evaluation_yaml(path_config: str | Path) -> dict:
     return load_yaml_config(str(path_config))
 
 
+def config_from_yaml(path_config: str | Path) -> EvaluationConfig:
+    """Build a validated EvaluationConfig from a YAML file."""
+    cfg = load_evaluation_yaml(path_config)
+    if not isinstance(cfg, dict):
+        raise ValueError(f"Evaluation config must be a YAML mapping: {path_config}")
+
+    bootstrap = int(cfg.get("bootstrap", 1000))
+    sample_eval_index = int(cfg.get("sample_eval_index", 0))
+    if bootstrap < 0:
+        raise ValueError("bootstrap must be >= 0.")
+    if sample_eval_index < 0:
+        raise ValueError("sample_eval_index must be >= 0.")
+
+    return EvaluationConfig(
+        dir_dataset=as_list(
+            cfg.get("dir_dataset", ["dataset_raw"]),
+            "dir_dataset",
+            allow_none=False,
+        ),
+        dir_result=as_list(
+            cfg.get("dir_result", ["result"]),
+            "dir_result",
+            allow_none=False,
+        ),
+        dir_performance=str(cfg.get("dir_performance", "performance")),
+        prompt_modes=parse_prompt_modes(cfg.get("prompt_modes", ["direct"])),
+        model_names=parse_models(cfg.get("models", "all")),
+        task_types=parse_task_types(cfg.get("task_types")),
+        tasks=as_list(cfg.get("tasks"), "tasks", allow_none=True),
+        custom_tasks=cfg.get("custom_tasks", {}) or {},
+        bootstrap=bootstrap,
+        seed=int(cfg.get("seed", 42)),
+        sample_eval_index=sample_eval_index,
+        print_summary=bool(cfg.get("print_summary", True)),
+    )
+
+
 def set_evaluation_seed(seed: int):
     """Seed Python and NumPy for deterministic evaluation bookkeeping."""
-    random.seed(seed)
-    np.random.seed(seed)
+    return seed_everything(seed, verbose=False)
 
 
 def make_task_args(config: Any):
@@ -85,17 +146,3 @@ def make_task_args(config: Any):
         seed=config.seed,
         sample_eval_index=config.sample_eval_index,
     )
-
-
-def read_json(path_file: str | Path):
-    """Read a JSON file using UTF-8 encoding."""
-    with Path(path_file).open("r", encoding="utf-8") as f:
-        return json.load(f)
-
-
-def write_json(data, path_file: str | Path):
-    """Write JSON data with parent-directory creation."""
-    path_file = Path(path_file)
-    path_file.parent.mkdir(parents=True, exist_ok=True)
-    with path_file.open("w", encoding="utf-8") as f:
-        json.dump(data, f, indent=4, ensure_ascii=False)

@@ -1,26 +1,14 @@
-import os
 import json
+import os
+
+import numpy as np
 import regex
 import torch
-import random
-import numpy as np
-import transformers
 from tqdm import tqdm
-from vllm import LLM, SamplingParams
 from transformers import AutoModelForCausalLM, AutoTokenizer
+from vllm import LLM, SamplingParams
 
-
-def seed_everything(seed):
-    seed = int(seed)
-    random.seed(seed)
-    os.environ["PYTHONHASHSEED"] = str(seed)
-    np.random.seed(seed)
-    torch.manual_seed(seed)
-    torch.cuda.manual_seed(seed)
-    torch.cuda.manual_seed_all(seed)
-    torch.backends.cudnn.deterministic = True
-    transformers.set_seed(seed)
-    print(f"seed everything: {seed}")
+from util.seed import seed_inference
 
 
 def text_normalize(str_text):
@@ -124,6 +112,7 @@ def load_model(model_name):
 
 def load_model_vllm(model_name, seed=42, ngram=5):
     print(f"Loaded model: {model_name} with vllm")
+    seed = seed_inference(seed)
 
     # model path
     with open(
@@ -231,11 +220,51 @@ def get_data_from_task(tasks, path_dir_data="../dataset_raw/"):
                     f"Loaded task: {task_name} with {len(dict_task_data[task_name])} samples"
                 )
         else:
+            # print(f"Skip task: {task_name} with {len(dict_task_data[task_name])} samples")
             pass
 
     print(f"Loaded {len(dict_task_data)} tasks")
 
     return dict_task_data
+
+
+# def get_data_from_task(tasks, path_dir_data="../dataset_raw/"):
+#     """
+#     Load the task data from the specified directory. The directory should contain
+#     JSON files with the task data. The function will return a dictionary where
+#     the keys are the task names and the values are the corresponding data.
+#     Args:
+#         path_dir_data (str): Path to the directory containing the task data files.
+#     Returns:
+#         dict_task_data (dict): Dictionary containing the task data. The keys are
+#             the task names and the values are the corresponding data.
+#     """
+#     # Check if the directory exists
+#     if not os.path.exists(path_dir_data):
+#         print(f"Directory {path_dir_data} does not exist.")
+#         return {}
+#     list_file_json = [
+#         os.path.join(path_dir_data, file)
+#         for file in os.listdir(path_dir_data)
+#         if file.endswith(".json") and os.path.isfile(os.path.join(path_dir_data, file))
+#     ]
+#     dict_task_data = {}
+#     for file in list_file_json:
+#         task_name = os.path.basename(file).split("/")[-1].replace(".json", "")
+#         with open(file, "r", encoding="utf-8") as f:
+#             data = json.load(f)
+#         data = [
+#             {"input": value["origin"], "id": key.split("|")[-1]}
+#             for key, value in data.items()
+#         ]
+#         # sort by id
+#         data = sorted(data, key=lambda x: int(x["id"]))
+#         dict_task_data[task_name] = data
+#         print(f"Loaded task: {task_name} with {len(data)} samples")
+
+#     print(f"Loaded {len(dict_task_data)} tasks")
+
+#     return dict_task_data
 
 
 def calculate_my_n_gram_accuracy_vllm(
@@ -293,11 +322,32 @@ def calculate_my_n_gram_accuracy_vllm(
     list_input = []
     list_output_text, list_output_token, list_idx_pos = [], [], []
 
+    # If need to extend the starting positions
+    # preset_positions = [40, 80, 160, 320, 640]
+
     for idx_data, tokens in enumerate(dataset_tokenized):
+        # Get the starting positions between min_prompt_start and max_token_all
+        # len_tokens = len(tokens)
+        # if min_prompt_start + n > len_tokens:
+        #     continue
+        # Select starting points using linspace
+        # list_pos_start = np.linspace(
+        #     min_prompt_start,
+        #     min(len_tokens, max_token_all) - n,
+        #     num=k,
+        #     dtype=int,
+        # )
+        # list_pos_start = list(set(list_pos_start))
+
         if len(tokens) < min_prompt_start + (k - 1) * token_gap + n:
             continue
 
         list_pos_start = [min_prompt_start + i * token_gap for i in range(k)]
+
+        # Extend the starting positions with preset positions
+        # for pos_start in preset_positions:
+        #     if pos_start + n <= len(tokens):
+        #         list_pos_start.append(pos_start)
 
         # Build prompts and record the original n-gram IDs
         for pos_start in list_pos_start:
@@ -429,6 +479,9 @@ def calculate_my_n_gram_accuracy_hf_batch(
     list_input = []
     list_output_text, list_output_token, list_idx_pos = [], [], []
 
+    # If need to extend the starting positions
+    # preset_positions = [40, 80, 160, 320, 640]
+
     # Iterate over all samples
     for idx_data, tokens in enumerate(dataset_tokenized):
         # If the sample is too short, skip
@@ -437,6 +490,11 @@ def calculate_my_n_gram_accuracy_hf_batch(
 
         # Generate starting positions based on token_gap
         list_pos_start = [min_prompt_start + i * token_gap for i in range(k)]
+
+        # Extend the starting positions with preset positions
+        # for pos in preset_positions:
+        #     if pos + n <= len(tokens):
+        #         list_pos_start.append(pos)
 
         # deduplicate and sort the starting positions
         list_pos_start = list(set(list_pos_start))

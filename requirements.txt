@@ -16,10 +16,12 @@ rouge-score
 bert-score
 evaluate
 
-# Provider batch helpers
+# Commercial API providers
 openai
 tiktoken
-google-cloud-aiplatform
+anthropic
+google-genai
 
 # Development / lightweight checks
 pytest
+ruff

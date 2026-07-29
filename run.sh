@@ -11,29 +11,37 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$SCRIPT_DIR"
 
 # -------- Path to YAML config --------
-CONFIG_FILE="${REPO_ROOT}/configs/BRIDGE.yaml"
-MODEL_FILE="${REPO_ROOT}/configs/dict_model_path.json"
-MODEL_FILE_EXAMPLE="${REPO_ROOT}/configs/dict_model_path.example.json"
+CONFIG_FILE="${BRIDGE_CONFIG_FILE:-${REPO_ROOT}/configs/BRIDGE.yaml}"
+MODEL_FILE="${BRIDGE_MODEL_FILE:-${REPO_ROOT}/configs/dict_model_path.json}"
 
 # -------- Model Name --------
-model_name=Llama-3.1-8B-Instruct
+model_name=gemma-3-12b-it
 
 # -------- GPU VISIBILITY --------
 gpus=0,1,2,3
+# gpus=4,5,6,7
 export CUDA_VISIBLE_DEVICES=$gpus
 
 # -------- Log output --------
 dir_log="${REPO_ROOT}/log"
-mkdir -p "$dir_log"
+
+if [[ "$dry_run" == true ]]; then
+    if [[ ! -f "$CONFIG_FILE" ]]; then
+        CONFIG_FILE="${REPO_ROOT}/configs/BRIDGE.example.yaml"
+    fi
+    if [[ ! -f "$MODEL_FILE" ]]; then
+        MODEL_FILE="${REPO_ROOT}/configs/dict_model_path.example.json"
+    fi
+else
+    mkdir -p "$dir_log"
+fi
 
 # -------- Sanity checks --------
 if [[ ! -f "$CONFIG_FILE" ]]; then
     echo "Config file not found: $CONFIG_FILE"
     exit 1
 fi
-if [[ ! -f "$MODEL_FILE" && "$dry_run" == true && -f "$MODEL_FILE_EXAMPLE" ]]; then
-    MODEL_FILE="$MODEL_FILE_EXAMPLE"
-elif [[ ! -f "$MODEL_FILE" ]]; then
+if [[ ! -f "$MODEL_FILE" ]]; then
     echo "Model mapping file not found: $MODEL_FILE"
     echo "Create it from configs/dict_model_path.example.json before running inference."
     exit 1

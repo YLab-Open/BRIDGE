@@ -1,16 +1,16 @@
-"""Azure OpenAI request, response, and cost helper functions.
-
-These helpers are separated from `model.azure` so the provider entry point can
-focus on task/file orchestration while preserving backward-compatible imports
-through re-exported names in `model.azure`.
-"""
+"""Shared Azure OpenAI request, response, and cost helpers."""
 
 from __future__ import annotations
 
 import re
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
-import tiktoken
+from model.api.common import deep_merge_dict
+
+try:
+    import tiktoken
+except ImportError:  # pragma: no cover - only for minimal test environments.
+    tiktoken = None
 
 
 MODEL_PRICE_PER_1M = {
@@ -53,25 +53,6 @@ def supports_chat_reasoning_effort(model_name: str) -> bool:
 def default_query_mode_for_model(model_name: str) -> str:
     """Return `response` for reasoning models and `chat` for conventional models."""
     return "response" if is_reasoning_model(model_name) else "chat"
-
-
-def deep_merge_dict(base: Dict[str, Any], override: Optional[Dict[str, Any]]) -> Dict[str, Any]:
-    """
-    Recursively merge `override` into `base` and return `base`.
-
-    Args:
-        base: Mutable base dictionary.
-        override: Optional override dictionary. Nested dictionaries are merged;
-            all other values replace the base value.
-    """
-    if not override:
-        return base
-    for key, value in override.items():
-        if key in base and isinstance(base[key], dict) and isinstance(value, dict):
-            deep_merge_dict(base[key], value)
-        else:
-            base[key] = value
-    return base
 
 
 def apply_output_token_key(
@@ -331,17 +312,6 @@ def extract_summary_from_responses_api_output(body: Dict[str, Any]) -> str:
     return "\n\n".join(summary_parts)
 
 
-def safe_model_dump(response: Any) -> Dict[str, Any]:
-    """Return a dict from OpenAI SDK response objects or existing dicts."""
-    if hasattr(response, "model_dump"):
-        dumped = response.model_dump()
-        if isinstance(dumped, dict):
-            return dumped
-    if isinstance(response, dict):
-        return response
-    return {}
-
-
 def get_azure_price(model_name: str, flag_batch: bool = False) -> Tuple[float, float]:
     """
     Return Azure input/output price in USD per 1M tokens.
@@ -392,6 +362,8 @@ def cost_calculation_word(
     model_name: str = "gpt-4",
 ) -> float:
     """Estimate Azure cost by tokenizing concrete input and output strings."""
+    if tiktoken is None:
+        raise ImportError("tiktoken is required for word-based Azure cost estimation.")
     tokenizer = tiktoken.encoding_for_model(resolve_tokenizer_model(model_name))
     token_input_each = tokenizer.encode_batch(list_input)
     token_output_each = tokenizer.encode_batch(list_output)
@@ -414,6 +386,8 @@ def cost_estimation_word(
     ratio_word_token: int = 2,
 ) -> float:
     """Estimate Azure cost from input strings and expected output word count."""
+    if tiktoken is None:
+        raise ImportError("tiktoken is required for word-based Azure cost estimation.")
     tokenizer = tiktoken.encoding_for_model(resolve_tokenizer_model(model_name))
     token_input_each = tokenizer.encode_batch(list_input)
     num_token_input_all = sum(len(tokens) for tokens in token_input_each)

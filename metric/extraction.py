@@ -1,8 +1,8 @@
-from transformers import BasicTokenizer
 from dataset.config import (
-    get_models_evaluate,
     get_metrics_ext,
     get_metrics_ext_qa,
+    get_metrics_ext_subject,
+    get_models_evaluate,
 )
 
 
@@ -45,7 +45,7 @@ def ext_prepare_subject_event_sets(list_dict, subject_fields):
     return subject_set, event_set
 
 
-def ext_compute_sample_metrics(list_pred, list_label, list_field_subject=["entity"]):
+def ext_compute_sample_metrics(list_pred, list_label, list_field_subject=None):
     """
     Compute per-sample TP, FP, FN for both subject recognition and event extraction.
     Also record whether the subject and event are fully correctly recognized at the sample level.
@@ -58,6 +58,10 @@ def ext_compute_sample_metrics(list_pred, list_label, list_field_subject=["entit
     Returns:
     dict_metrics_sample (dict): A dictionary with lists of per-sample TP, FP, FN, and correctness flags.
     """
+
+    list_field_subject = (
+        ["entity"] if list_field_subject is None else list_field_subject
+    )
 
     # Initialize counters for subject recognition and event extraction
     dict_metrics_sample = {
@@ -182,7 +186,7 @@ def ext_compute_overall_metrics(dict_metrics_sample):
     return dict_performance
 
 
-def calc_metrics_ext(list_pred, list_label, list_field_subject=["entity"]):
+def calc_metrics_ext(list_pred, list_label, list_field_subject=None):
     """
     Evaluate the performance of subject recognition when all entities in list_field_subject are correctly recognized,
     and the performance of recognizing the event and all attributes correctly.
@@ -197,6 +201,9 @@ def calc_metrics_ext(list_pred, list_label, list_field_subject=["entity"]):
     Returns:
     dict: A dictionary containing accuracy, precision, recall, and F1 score for both subject recognition and event extraction.
     """
+    if list_field_subject is None:
+        list_field_subject = ["entity"]
+
     # Ensure list_field_subject is a list
     if not isinstance(list_field_subject, list):
         list_field_subject = [list_field_subject]
@@ -226,6 +233,13 @@ def calc_metrics_ext_qa(list_pred, list_label, language="en"):
         - exact_match: the percentage of the answer is exactly contained in the prediction
 
     """
+    try:
+        from transformers import BasicTokenizer
+    except ModuleNotFoundError as exc:
+        raise ModuleNotFoundError(
+            "calc_metrics_ext_qa requires the optional dependency `transformers`."
+        ) from exc
+
     # Initialize counters for metrics
     overlap_match = 0
     exact_match = 0
@@ -307,6 +321,20 @@ def print_metrics_ext(
         print("=========================================")
 
     return str_metric.strip()
+
+
+def print_metrics_ext_subject(
+    dict_model_metrics, list_model=None, list_metrics=None, flag_print_missing=False
+):
+    """Print subject-only metrics for extraction tasks."""
+    if list_metrics is None:
+        list_metrics = get_metrics_ext_subject()
+    return print_metrics_ext(
+        dict_model_metrics=dict_model_metrics,
+        list_model=list_model,
+        list_metrics=list_metrics,
+        flag_print_missing=flag_print_missing,
+    )
 
 
 def print_metrics_ext_qa(

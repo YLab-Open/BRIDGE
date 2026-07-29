@@ -1,11 +1,18 @@
-import os
-import json
-import time
-import yaml
+# ruff: noqa: F403, F405
+"""Legacy n-gram contamination runner.
+
+The script imports a broad helper surface from `utils.py`, which is kept as a
+single-file toolkit for this standalone workflow.
+"""
+
 import argparse
-import setproctitle
+import json
+import os
+import time
 from pathlib import Path
 
+import setproctitle
+import yaml
 from utils import *
 
 if __name__ == "__main__":

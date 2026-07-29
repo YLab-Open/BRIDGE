@@ -12,9 +12,26 @@ This folder contains utilities for n-gram based data-contamination checks.
 
 ## Typical Use
 
-The current utilities are designed for offline analysis rather than the main
-BRIDGE inference/evaluation path. Keep new reusable contamination helpers in
-`utils.py`; put one-off local outputs under ignored result/log folders.
+Create `configs/dict_model_path.json` from the public template, then customize
+`BRIDGE_data_contamination.yaml`. Validate the launchers without loading a model:
+
+```bash
+bash data_contamination/run_data_contamination.sh --dry-run
+bash data_contamination/run_data_contamination_mul_model.sh --dry-run
+```
+
+Remove `--dry-run` to start the single- or multi-model job. Override the default
+GPU list, model, or config without editing the launchers:
+
+```bash
+CONTAMINATION_GPUS=0 \
+CONTAMINATION_MODEL_NAME=Llama-3.1-8B-Instruct \
+bash data_contamination/run_data_contamination.sh
+```
+
+These utilities are designed for offline analysis rather than the main BRIDGE
+inference/evaluation path. Keep new reusable contamination helpers in `utils.py`;
+put one-off local outputs under ignored result/log folders.
 
 ## Maintenance Notes
 

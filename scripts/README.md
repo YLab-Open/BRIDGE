@@ -17,11 +17,13 @@ bash scripts/run_timing.sh 45
 bash scripts/run_multiple_model_timing.sh 45
 ```
 
-Edit `run.sh` and `run_multiple_model.sh` directly for model names, GPU IDs,
-config paths, and log locations.
+Edit `run.sh` and `run_multiple_model.sh` for model names and GPU IDs. Config
+paths can also be overridden with `BRIDGE_CONFIG_FILE` and
+`BRIDGE_MODEL_FILE`.
 
-Use `--dry-run` to validate paths and print the command without launching
-inference:
+Use `--dry-run` to validate paths and print commands without launching
+inference. In a fresh clone, dry-run automatically uses the committed example
+config and model mapping when the ignored local copies do not exist:
 
 ```bash
 bash run.sh --dry-run

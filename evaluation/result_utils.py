@@ -1,7 +1,7 @@
 from pathlib import Path
 from typing import Iterable
 
-from .common import read_json
+from util.io import load_json
 from util.runtime import parse_path_list
 
 RESULT_SUFFIX = ".result.json"
@@ -73,7 +73,7 @@ def find_result_files(
 
 def load_result_records(path_file: str | Path) -> list[dict]:
     """Load one result JSON file."""
-    data = read_json(path_file)
+    data = load_json(path_file)
     if not isinstance(data, list):
         raise ValueError(f"Result file must contain a list: {path_file}")
     return data

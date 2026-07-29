@@ -52,15 +52,23 @@ enable_thinking: True
 # "vllm mode": it is the number of prompts submitted to each model.generate() call; vLLM still controls active concurrency internally with max_num_seqs.
 batch_size: 512
 
-# Save partial results every N completed batches.
-# Larger values reduce JSON I/O but increase possible work lost after a crash.
+# Dataloader worker processes used for prompt formatting.
+# Default: 2 * number of configured GPUs.
+# Set 0 for small/debug runs to avoid multiprocessing startup overhead.
+# num_workers: 4
+
+# Append newly completed rows to a JSONL checkpoint every N completed batches.
 # Default: None, which means not to save partial results.
 # Recommended for large result files: 5-20.
 save_every_n_batches: 20
 
+# Resume an exact saved JSONL prefix after an interrupted vLLM run.
+# The checkpoint is removed after the final result JSON is written successfully.
+resume_partial_results: False
+
 # Whether to save full input/instruction/metadata in result JSON.
 # Default: True, which saves the full input/instruction/metadata.
-# Note: False saves only the id/type/language/output/pred to reduce file size.
+# Note: False saves only id/type/language/output/example/pred to reduce file size.
 save_input: True
 
 # -- 5. Generation --

@@ -18,6 +18,7 @@ local-only config validation.
 
 ```bash
 pytest -q
+ruff check .
 ```
 
 `pytest.ini` sets the repository import path and prevents pytest from walking
@@ -25,3 +26,5 @@ large data, result, performance, notebook, and provider-output folders.
 
 These tests intentionally avoid loading real LLM checkpoints or calling external
 APIs, so they should be fast enough to run before committing framework changes.
+The Ruff configuration checks import ordering, unused imports, undefined names,
+and high-signal syntax/style errors without requiring runtime dependencies.

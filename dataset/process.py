@@ -1,6 +1,8 @@
 from functools import partial
-from .config import extract_cot_pred
+
 from util.preprocess import process_punc_to_en
+
+from .config import extract_cot_pred
 
 
 def extract_thinking_output(text, warn_missing=False):
@@ -44,9 +46,13 @@ def extract_pred(text, prompt_mode="direct", split_tokens=None):
     Output:
         text: str
     """
+    split_tokens = split_tokens or []
     text = extract_thinking_output(text)["output"]
     if "cot" in prompt_mode:
         text = extract_cot_pred(text)
+    # for split_token in split_tokens:
+    #     if split_token in text:
+    #         text = text.rsplit(split_token, 1)[1]
     return text.strip()
 
 
@@ -182,6 +188,8 @@ def format_chat(
     num_token_reserve=10,
     examples=None,
     chat_kwargs=None,
+    return_metadata=False,
+    example_token_cache=None,
 ):
     """
     Format the input for different models based on the prompt mode.
@@ -196,7 +204,10 @@ def format_chat(
         chat_kwargs: Additional keyword arguments for the tokenizer's apply_chat_template method.
 
     Returns:
-        The formatted input text for large language models.
+        The formatted input text for large language models. When
+        ``return_metadata`` is true, returns ``(formatted_input, metadata)``,
+        where ``metadata["example"]`` contains the IDs of the few-shot
+        examples that actually fit in the context window.
 
     """
 
@@ -208,7 +219,7 @@ def format_chat(
     language = data["language"]
 
     if "meditron" in model_name.lower():
-        example_ids, formatted_input = format_chat_meditron(
+        example_ids, formatted_input, actual_input = format_chat_meditron(
             model_name=model_name,
             tokenizer=tokenizer,
             language=language,
@@ -218,9 +229,11 @@ def format_chat(
             times_word_token=times_word_token,
             num_token_reserve=num_token_reserve,
             examples=examples,
+            return_input_user=True,
+            example_token_cache=example_token_cache,
         )
     elif "mellama" in model_name.lower():
-        example_ids, formatted_input = format_chat_MeLLaMA(
+        example_ids, formatted_input, actual_input = format_chat_MeLLaMA(
             model_name=model_name,
             tokenizer=tokenizer,
             language=language,
@@ -230,9 +243,11 @@ def format_chat(
             times_word_token=times_word_token,
             num_token_reserve=num_token_reserve,
             examples=examples,
+            return_input_user=True,
+            example_token_cache=example_token_cache,
         )
     else:
-        example_ids, formatted_input = format_chat_general(
+        example_ids, formatted_input, actual_input = format_chat_general(
             model_name=model_name,
             tokenizer=tokenizer,
             language=language,
@@ -243,11 +258,15 @@ def format_chat(
             num_token_reserve=num_token_reserve,
             examples=examples,
             chat_kwargs=chat_kwargs,
+            return_input_user=True,
+            example_token_cache=example_token_cache,
         )
 
-    if examples:
-        data["example_ids"] = example_ids
-
+    if return_metadata:
+        return formatted_input, {
+            "input": actual_input,
+            "example": list(example_ids),
+        }
     return formatted_input
 
 
@@ -276,6 +295,7 @@ def get_formatted_chat(
     examples=None,
     flag_openai=False,
     chat_kwargs=None,
+    example_token_cache=None,
 ):
     """Build standard chat messages while respecting the input token budget."""
     examples = examples or []
@@ -285,11 +305,6 @@ def get_formatted_chat(
     initial_estimated_token_count = estimate_token_rough(
         input_system, input_user, language, times_word_token, examples
     )
-
-    # If the rough token count is within the limit, no truncation is needed
-    if initial_estimated_token_count <= max_token_input:
-        example_ids, formatted_chat = format_message(input_system, input_user, examples)
-        return example_ids, formatted_chat
 
     # Prepare the token counting functions based on the model type
     if flag_openai:
@@ -304,6 +319,15 @@ def get_formatted_chat(
             chat_kwargs=chat_kwargs,
         )
         truncate_text_func = partial(get_truncate_text, tokenizer=tokenizer)
+
+    # If the rough token count is within the limit, verify with the real
+    # tokenizer before returning. Some tokenizers, especially Mistral-family
+    # tokenizers with regex fixes, can diverge substantially from word-based
+    # estimates on long clinical notes.
+    if initial_estimated_token_count <= max_token_input:
+        example_ids, formatted_chat = format_message(input_system, input_user, examples)
+        if get_token_func(messages=formatted_chat) <= max_token_input:
+            return example_ids, formatted_chat
 
     # Step 2: Handle truncation when exceeding token limit
     _, base_chat = format_message(input_system, input_user, [])
@@ -334,7 +358,18 @@ def get_formatted_chat(
             {"role": "assistant", "content": ex["output"]},
         ]
         # Tokenize to check if we can fit this example within remaining tokens
-        ex_token_count = get_token_func(messages=chat_example)
+        cache_key = (
+            "openai" if flag_openai else "chat",
+            ex.get("id"),
+            ex["input"],
+            ex["output"],
+        )
+        if example_token_cache is not None and cache_key in example_token_cache:
+            ex_token_count = example_token_cache[cache_key]
+        else:
+            ex_token_count = get_token_func(messages=chat_example)
+            if example_token_cache is not None:
+                example_token_cache[cache_key] = ex_token_count
 
         # If we have enough room for this example, add it to the list
         if ex_token_count < remaining_tokens:
@@ -362,6 +397,8 @@ def format_chat_general(
     num_token_reserve=10,
     examples=None,
     chat_kwargs=None,
+    return_input_user=False,
+    example_token_cache=None,
 ):
     """
     Format the input for general models with optional examples and length truncation.
@@ -388,7 +425,10 @@ def format_chat_general(
     examples = examples or []
     chat_kwargs = chat_kwargs or {}
 
-    if any(keyword in model_name.lower() for keyword in ["gemma-2", "biomistral"]):
+    user_assistant_format = any(
+        keyword in model_name.lower() for keyword in ["gemma-2", "biomistral"]
+    )
+    if user_assistant_format:
         example_ids, formatted_chat = get_formatted_chat_user_assistant(
             tokenizer=tokenizer,
             language=language,
@@ -398,6 +438,7 @@ def format_chat_general(
             times_word_token=times_word_token,
             num_token_reserve=num_token_reserve,
             examples=examples,
+            example_token_cache=example_token_cache,
         )
     else:
         example_ids, formatted_chat = get_formatted_chat(
@@ -410,6 +451,7 @@ def format_chat_general(
             num_token_reserve=num_token_reserve,
             examples=examples,
             chat_kwargs=chat_kwargs,
+            example_token_cache=example_token_cache,
         )
 
     # Apply the chat template for final formatting
@@ -417,6 +459,20 @@ def format_chat_general(
         formatted_chat, tokenize=False, add_generation_prompt=True, **chat_kwargs
     )
 
+    if user_assistant_format:
+        prefix = (
+            "Input:\n"
+            if example_ids
+            else f"{input_system}\n\nInput:\n"
+        )
+        actual_input = formatted_chat[-1]["content"]
+        if not actual_input.startswith(prefix):
+            raise ValueError("Cannot recover user input from user/assistant prompt format.")
+        actual_input = actual_input[len(prefix) :]
+    else:
+        actual_input = formatted_chat[-1]["content"]
+    if return_input_user:
+        return example_ids, formatted_input, actual_input
     return example_ids, formatted_input
 
 
@@ -454,6 +510,7 @@ def get_formatted_chat_user_assistant(
     times_word_token=7,
     num_token_reserve=10,
     examples=None,
+    example_token_cache=None,
 ):
     """
     Format input for 'user_assistant' style models, supporting examples and length truncation.
@@ -519,7 +576,18 @@ def get_formatted_chat_user_assistant(
             {"role": "assistant", "content": ex["output"]},
         ]
         # Tokenize to check if we can fit this example within remaining tokens
-        ex_token_count = num_tokens_from_messages(chat_example, tokenizer)
+        cache_key = (
+            "user-assistant",
+            ex.get("id"),
+            ex["input"],
+            ex["output"],
+        )
+        if example_token_cache is not None and cache_key in example_token_cache:
+            ex_token_count = example_token_cache[cache_key]
+        else:
+            ex_token_count = num_tokens_from_messages(chat_example, tokenizer)
+            if example_token_cache is not None:
+                example_token_cache[cache_key] = ex_token_count
 
         # If we have enough room for this example, add it to the list
         if ex_token_count < remaining_tokens:
@@ -546,6 +614,8 @@ def format_chat_meditron(
     times_word_token=7,
     num_token_reserve=10,
     examples=None,
+    return_input_user=False,
+    example_token_cache=None,
 ):
     """
     Format input for Meditron, supporting examples and length truncation.
@@ -589,6 +659,8 @@ def format_chat_meditron(
             f"<|im_start|> user\n{input_user}<|im_end|>\n"
             f"<|im_start|> assistant\n"
         )
+        if return_input_user:
+            return example_ids, formatted_input, input_user
         return example_ids, formatted_input
 
     # Otherwise, perform truncation
@@ -614,7 +686,20 @@ def format_chat_meditron(
                 f"<|im_start|> user\n{ex['input']}<|im_end|>\n"
                 f"<|im_start|> assistant\n{ex['output']}<|im_end|>\n"
             )
-            current_example_token_count = len(tokenizer.encode(current_example_text))
+            cache_key = (
+                "meditron",
+                ex.get("id"),
+                ex["input"],
+                ex["output"],
+            )
+            if example_token_cache is not None and cache_key in example_token_cache:
+                current_example_token_count = example_token_cache[cache_key]
+            else:
+                current_example_token_count = len(
+                    tokenizer.encode(current_example_text)
+                )
+                if example_token_cache is not None:
+                    example_token_cache[cache_key] = current_example_token_count
             # Check if adding the current example would exceed the remaining token budget
             if current_example_token_count <= remaining_tokens:
                 chat_example += current_example_text
@@ -625,6 +710,8 @@ def format_chat_meditron(
 
     # Combine all parts
     formatted_input = f"{base_template}{chat_example}{user_template}"
+    if return_input_user:
+        return examples_included_ids, formatted_input, input_user
     return examples_included_ids, formatted_input
 
 
@@ -638,6 +725,8 @@ def format_chat_MeLLaMA(
     times_word_token=7,
     num_token_reserve=10,
     examples=None,
+    return_input_user=False,
+    example_token_cache=None,
 ):
     """
     Format input for MeLLaMA, supporting examples and length truncation.
@@ -674,6 +763,8 @@ def format_chat_MeLLaMA(
         formatted_input = (
             f"{input_system}\n\n{example_texts}INPUT: {input_user}\nOUTPUT: "
         )
+        if return_input_user:
+            return example_ids, formatted_input, input_user
         return example_ids, formatted_input
 
     # Otherwise, perform truncation
@@ -695,7 +786,18 @@ def format_chat_MeLLaMA(
         for ex in examples:
             # Build the example text for this example
             ex_text = f"INPUT: {ex['input']}\nOUTPUT: {ex['output']}\n"
-            ex_token_count = len(tokenizer.encode(ex_text))
+            cache_key = (
+                "mellama",
+                ex.get("id"),
+                ex["input"],
+                ex["output"],
+            )
+            if example_token_cache is not None and cache_key in example_token_cache:
+                ex_token_count = example_token_cache[cache_key]
+            else:
+                ex_token_count = len(tokenizer.encode(ex_text))
+                if example_token_cache is not None:
+                    example_token_cache[cache_key] = ex_token_count
             # Check if adding this example would exceed the remaining token budget
             if ex_token_count <= remaining_tokens:
                 examples_text += ex_text
@@ -707,6 +809,8 @@ def format_chat_MeLLaMA(
 
     formatted_input = f"{base_template}{examples_text}{user_template}"
 
+    if return_input_user:
+        return examples_included_ids, formatted_input, input_user
     return examples_included_ids, formatted_input
 
 

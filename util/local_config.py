@@ -13,7 +13,6 @@ from typing import Any
 
 from util.runtime import load_yaml_config
 
-
 DEFAULT_CONFIG_DIR = Path("configs")
 DEFAULT_API_KEY_PATH = DEFAULT_CONFIG_DIR / "API.key.yaml"
 DEFAULT_MODEL_MAPPING_PATH = DEFAULT_CONFIG_DIR / "dict_model_path.json"

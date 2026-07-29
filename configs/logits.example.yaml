@@ -1,0 +1,47 @@
+# Optional synchronous logits capture for local vLLM inference.
+#
+# Use with:
+#   python main.py --config configs/BRIDGE.yaml --logits_config configs/logits.example.yaml
+#
+# The normal *.result.json remains evaluable. Logit/probability outputs are
+# always written to separate sidecar files.
+
+enabled: false
+
+vllm:
+  # Required if label_probability probes request whole-vocab raw logits.
+  max_logprobs: -1
+  logprobs_mode: raw_logits
+
+generation_trace:
+  enabled: true
+  # 0 saves token ids/text/hash only. Set a positive value to save top-K
+  # generation-time logits for every generated output token.
+  top_k_logprobs_for_all_output_tokens: 0
+
+label_probability:
+  # Task-specific. Requires an entry under tasks.
+  enabled: false
+  mode: generation_logprobs
+  generation_logprobs_top_k: 5000
+  fallback_to_exact_probe: true
+  probe_batch_size: 64
+  top_k_logits: 1000
+  save_top_logits: true
+  label_token_prefixes: auto
+  extra_label_token_prefixes: []
+  scan_decoded_vocab: true
+  fail_on_error: true
+  # token_ids uses the exact generated token ids before the target label token
+  # when re-probing. Use text only as a debugging fallback.
+  probe_prompt_mode: token_ids
+  model_label_token_id_overrides: {}
+
+tasks:
+  ExampleTaskName:
+    answer_prefix: "Assessment:"
+    label_values: ["No", "Yes"]
+    label_groups:
+      negative: ["No"]
+      positive: ["Yes"]
+    manifest_label_token_prefixes: ["", " "]
